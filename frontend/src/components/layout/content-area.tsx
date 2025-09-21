@@ -3,6 +3,7 @@
 import { RouteManagement } from '@/components/route-management/route-management'
 import { TextToISL } from '@/components/text-to-isl/text-to-isl'
 import AudioToISL from '@/components/audio-to-isl/audio-to-isl'
+import SpeechToISL from '@/components/speech-to-isl/speech-to-isl'
 import { ISLDictionary } from '@/components/isl-dictionary/isl-dictionary'
 
 interface ContentAreaProps {
@@ -114,24 +115,7 @@ export const ContentArea: React.FC<ContentAreaProps> = ({ activeMenu }) => {
                 return <AudioToISL />
 
             case 'speech-to-isl':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Speech to ISL</h1>
-                            <p className="text-gray-600">Record speech and convert to Indian Sign Language video</p>
-                        </div>
-                        <div className="bg-white p-8 border border-gray-200 text-center">
-                            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                            </svg>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">Record Speech</h3>
-                            <p className="text-gray-600 mb-6">Click the microphone to start recording your speech</p>
-                            <button className="px-6 py-3 text-white font-medium transition-colors" style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}>
-                                Start Recording
-                            </button>
-                        </div>
-                    </div>
-                )
+                return <SpeechToISL />
 
             case 'isl-dictionary':
                 return <ISLDictionary />

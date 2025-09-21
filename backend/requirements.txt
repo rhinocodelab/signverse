@@ -20,3 +20,4 @@ google-cloud-speech
 google-auth
 google-generativeai
 librosa
+pydub
