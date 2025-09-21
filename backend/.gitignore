@@ -41,10 +41,6 @@ credentials/secrets/
 gcp_service_account.json
 service_account.json
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
 
 # IDE
 .vscode/

@@ -495,7 +495,8 @@ async def stream_video(video_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/sync", response_model=SyncResponse)
 async def sync_isl_videos(
-    request: SyncRequest,
+    model_type: str = Form(...),
+    force_reprocess: str = Form("false"),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -504,9 +505,11 @@ async def sync_isl_videos(
     and processes any new or updated videos
     """
     try:
+        # Convert string to boolean
+        force_reprocess_bool = force_reprocess.lower() in ('true', '1', 'yes', 'on')
         # Get the public videos path
         base_path = get_public_videos_path()
-        model_path = base_path / f"{request.model_type}-model"
+        model_path = base_path / f"{model_type}-model"
 
         print(f"🔍 Sync Debug - Base path: {base_path}")
         print(f"🔍 Sync Debug - Model path: {model_path}")
@@ -571,7 +574,7 @@ async def sync_isl_videos(
                     select(ISLVideoModel).where(
                         and_(
                             ISLVideoModel.video_path == video_path,
-                            ISLVideoModel.model_type == request.model_type
+                            ISLVideoModel.model_type == model_type
                         )
                     )
                 )
@@ -580,10 +583,10 @@ async def sync_isl_videos(
                 print(
                     f"🔍 Sync Debug - Existing video found: {existing_video is not None}")
                 print(
-                    f"🔍 Sync Debug - Force reprocess: {request.force_reprocess}")
+                    f"🔍 Sync Debug - Force reprocess: {force_reprocess_bool}")
 
                 # Skip if exists and not forcing reprocess
-                if existing_video and not request.force_reprocess:
+                if existing_video and not force_reprocess_bool:
                     print(
                         f"⏭️ Sync Debug - Skipping {folder_name} (already exists)")
                     continue
@@ -608,7 +611,7 @@ async def sync_isl_videos(
                         display_name=folder_name,
                         video_path=video_path,
                         file_size=file_size,
-                        model_type=request.model_type,
+                        model_type=model_type,
                         mime_type="video/mp4",
                         file_extension="mp4",
                         is_active=True
@@ -617,7 +620,8 @@ async def sync_isl_videos(
                     video_id = new_video.id
 
                 # Process video with ffmpeg (async)
-                await process_video_async(video_id, video_path, folder_info["folder_path"], db)
+                asyncio.create_task(process_video_async(
+                    video_id, video_path, folder_info["folder_path"]))
                 processed_count += 1
 
             except Exception as e:

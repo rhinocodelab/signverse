@@ -19,6 +19,14 @@ interface ISLVideo {
     created_at: string
 }
 
+interface SyncResults {
+    success: boolean
+    message: string
+    processed: number
+    errors: string[]
+    total_folders?: number
+}
+
 export const ISLDictionary: React.FC = () => {
     const [selectedModel, setSelectedModel] = useState<'male' | 'female' | null>(null)
     const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -40,6 +48,17 @@ export const ISLDictionary: React.FC = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [videoToDelete, setVideoToDelete] = useState<ISLVideo | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [showSyncModal, setShowSyncModal] = useState(false)
+    const [showSyncProgressModal, setShowSyncProgressModal] = useState(false)
+    const [selectedSyncModel, setSelectedSyncModel] = useState<'male' | 'female' | null>(null)
+    const [syncProgress, setSyncProgress] = useState(0)
+    const [syncStatus, setSyncStatus] = useState('')
+    const [syncResults, setSyncResults] = useState<SyncResults | null>(null)
+    const [videoStats, setVideoStats] = useState({
+        total: 0,
+        male: 0,
+        female: 0
+    })
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -154,6 +173,34 @@ export const ISLDictionary: React.FC = () => {
         }
     }
 
+    const loadVideoStatistics = useCallback(async () => {
+        try {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/isl-videos/statistics/summary`)
+            if (!response.ok) {
+                throw new Error(`Failed to fetch statistics: ${response.statusText}`)
+            }
+            const data = await response.json()
+            setVideoStats({
+                total: data.total_videos || 0,
+                male: data.male_videos || 0,
+                female: data.female_videos || 0
+            })
+        } catch (error) {
+            console.error('Failed to load video statistics:', error)
+            // Fallback to calculating from current page videos
+            calculateVideoStats(videos)
+        }
+    }, [videos])
+
+    const calculateVideoStats = (videoList: ISLVideo[]) => {
+        const stats = {
+            total: videoList.length,
+            male: videoList.filter(video => video.model_type === 'male').length,
+            female: videoList.filter(video => video.model_type === 'female').length
+        }
+        setVideoStats(stats)
+    }
+
     const loadVideos = useCallback(async () => {
         setIsLoading(true)
         try {
@@ -176,14 +223,18 @@ export const ISLDictionary: React.FC = () => {
             const data = await response.json()
             setVideos(data.videos || [])
             setTotalVideos(data.total || 0)
+
+            // Load overall statistics
+            loadVideoStatistics()
         } catch (error) {
             console.error('Failed to load videos:', error)
             setVideos([]) // Set empty array on error
             setTotalVideos(0)
+            setVideoStats({ total: 0, male: 0, female: 0 })
         } finally {
             setIsLoading(false)
         }
-    }, [filterModel, searchTerm, currentPage])
+    }, [filterModel, searchTerm, currentPage, loadVideoStatistics])
 
     const handleVideoPlay = (videoId: number) => {
         const video = videos.find(v => v.id === videoId)
@@ -228,6 +279,74 @@ export const ISLDictionary: React.FC = () => {
         setVideoToDelete(null)
     }
 
+    const handleSyncVideos = () => {
+        setShowSyncModal(true)
+    }
+
+    const startSyncProcess = async () => {
+        if (!selectedSyncModel) return
+
+        // Close model selection modal and show progress modal
+        setShowSyncModal(false)
+        setShowSyncProgressModal(true)
+        setSyncProgress(0)
+        setSyncStatus('Starting sync process...')
+
+        try {
+            // Simulate progress steps
+            const progressSteps = [
+                { progress: 20, status: 'Scanning folders...' },
+                { progress: 40, status: 'Validating video files...' },
+                { progress: 60, status: 'Processing videos...' },
+                { progress: 80, status: 'Updating database...' },
+                { progress: 100, status: 'Sync completed!' }
+            ]
+
+            for (const step of progressSteps) {
+                setSyncProgress(step.progress)
+                setSyncStatus(step.status)
+                await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+
+            // Call the actual sync API
+            const formData = new FormData()
+            formData.append('model_type', selectedSyncModel)
+            formData.append('force_reprocess', 'true')
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/isl-videos/sync`, {
+                method: 'POST',
+                body: formData
+            })
+
+            if (!response.ok) {
+                throw new Error(`Sync failed: ${response.statusText}`)
+            }
+
+            const result = await response.json()
+            setSyncResults(result)
+
+            // Close progress modal after a short delay
+            setTimeout(() => {
+                setShowSyncProgressModal(false)
+                setSelectedSyncModel(null)
+                // Refresh videos list
+                loadVideos()
+            }, 2000)
+
+        } catch (error) {
+            console.error('Sync failed:', error)
+            setSyncStatus('Sync failed!')
+            setTimeout(() => {
+                setShowSyncProgressModal(false)
+            }, 3000)
+        }
+    }
+
+    const cancelSyncModal = () => {
+        setShowSyncModal(false)
+        setSelectedSyncModel(null)
+    }
+
     const handlePageChange = (newPage: number) => {
         setCurrentPage(newPage)
     }
@@ -266,9 +385,28 @@ export const ISLDictionary: React.FC = () => {
                 <p className="text-gray-600">Upload and manage Indian Sign Language videos</p>
             </div>
 
+            {/* Video Statistics */}
+            <div className="mb-6">
+                <p className="text-gray-600">
+                    <span className="font-semibold text-gray-900">Total Videos:</span> {videoStats.total} |
+                    <span className="font-semibold text-blue-600 ml-2">Male Model:</span> {videoStats.male} |
+                    <span className="font-semibold text-pink-600 ml-2">Female Model:</span> {videoStats.female}
+                </p>
+            </div>
+
             <div className="space-y-6">
-                {/* Upload Button */}
-                <div className="flex justify-end">
+                {/* Upload and Sync Buttons */}
+                <div className="flex justify-end space-x-3">
+                    <Button
+                        onClick={handleSyncVideos}
+                        className="flex items-center space-x-2 text-white"
+                        style={{ backgroundColor: 'oklch(62.7% 0.194 149.214)' }}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>Sync ISL Videos</span>
+                    </Button>
                     <Button
                         onClick={() => setShowUploadModal(true)}
                         className="flex items-center space-x-2 text-white"
@@ -729,6 +867,132 @@ export const ISLDictionary: React.FC = () => {
                                         </>
                                     )}
                                 </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sync Model Selection Modal */}
+            {showSyncModal && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold text-gray-900">Sync ISL Videos</h2>
+                                <button
+                                    onClick={cancelSyncModal}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="mb-6">
+                                <p className="text-gray-700 mb-4">
+                                    Select which AI Avatar model folder to sync:
+                                </p>
+                                <div className="flex space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setSelectedSyncModel('male')}
+                                        className={`flex-1 ${selectedSyncModel === 'male'
+                                            ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        Male
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setSelectedSyncModel('female')}
+                                        className={`flex-1 ${selectedSyncModel === 'female'
+                                            ? 'bg-pink-600 text-white border-pink-600 hover:bg-pink-700'
+                                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        Female
+                                    </Button>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-3">
+                                    This will scan the selected folder and process any videos not in the database.
+                                </p>
+                            </div>
+
+                            <div className="flex space-x-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={cancelSyncModal}
+                                    className="flex-1"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={startSyncProcess}
+                                    disabled={!selectedSyncModel}
+                                    className="flex-1 text-white"
+                                    style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}
+                                >
+                                    Start Sync
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Sync Progress Modal */}
+            {showSyncProgressModal && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <div className="p-6">
+                            <div className="text-center">
+                                <h2 className="text-xl font-semibold text-gray-900 mb-4">Syncing ISL Videos</h2>
+
+                                {/* Progress Bar */}
+                                <div className="mb-4">
+                                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full transition-all duration-500 ease-out"
+                                            style={{
+                                                width: `${syncProgress}%`,
+                                                backgroundColor: 'oklch(50% 0.134 242.749)'
+                                            }}
+                                        ></div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-2">{syncProgress}%</p>
+                                </div>
+
+                                {/* Status Message */}
+                                <p className="text-gray-700 mb-6">{syncStatus}</p>
+
+                                {/* Loading Spinner */}
+                                <div className="flex justify-center mb-4">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                </div>
+
+                                {/* Model Info */}
+                                {selectedSyncModel && (
+                                    <div className="text-sm text-gray-500">
+                                        <p className="font-medium">
+                                            Syncing {selectedSyncModel === 'male' ? 'Male' : 'Female'} Model Folder
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Results */}
+                                {syncResults && (
+                                    <div className="mt-4 p-3 bg-gray-50 rounded-lg text-left">
+                                        <h4 className="font-medium text-gray-900 mb-2">Sync Results:</h4>
+                                        <p className="text-sm text-gray-600">
+                                            Found: {syncResults.total_folders} folders<br />
+                                            Processed: {syncResults.processed} videos<br />
+                                            Errors: {syncResults.errors?.length || 0}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

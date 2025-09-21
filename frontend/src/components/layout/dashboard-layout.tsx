@@ -26,7 +26,9 @@ export const DashboardLayout: React.FC = () => {
                 <DashboardHeader />
 
                 {/* Content */}
-                <ContentArea activeMenu={activeMenu} />
+                <div className="flex-1 overflow-y-auto">
+                    <ContentArea activeMenu={activeMenu} />
+                </div>
             </div>
         </div>
     )
