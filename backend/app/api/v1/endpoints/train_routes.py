@@ -144,7 +144,7 @@ async def delete_train_route(
     train_route_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Delete a train route"""
+    """Delete a train route and its associated translations"""
     # Check if train route exists
     result = await db.execute(
         select(TrainRoute).where(TrainRoute.id == train_route_id)
@@ -157,7 +157,6 @@ async def delete_train_route(
             detail="Train route not found"
         )
 
-    await db.execute(
-        delete(TrainRoute).where(TrainRoute.id == train_route_id)
-    )
+    # Delete the train route (cascade will automatically delete translations)
+    await db.delete(existing_route)
     await db.commit()
