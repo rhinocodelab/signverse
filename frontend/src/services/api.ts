@@ -18,10 +18,17 @@ class ApiService {
 
         const config: RequestInit = {
             headers: {
-                'Content-Type': 'application/json',
                 ...options.headers,
             },
             ...options,
+        }
+
+        // Only set Content-Type for JSON requests (not for FormData)
+        if (!(options.body instanceof FormData)) {
+            config.headers = {
+                'Content-Type': 'application/json',
+                ...config.headers,
+            }
         }
 
         // Add auth token if available

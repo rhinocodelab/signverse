@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Languages, Play, Volume2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { translationService, TranslationProgress } from '@/services/translation-service'
+import { islVideoGenerationService } from '@/services/isl-video-generation-service'
 
 export const TextToISL: React.FC = () => {
     const [englishText, setEnglishText] = useState('')
@@ -23,6 +24,17 @@ export const TextToISL: React.FC = () => {
         progress: 0,
         error: ''
     })
+    const [selectedModel, setSelectedModel] = useState<'male' | 'female'>('male')
+    const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null)
+    const [videoGenerationProgress, setVideoGenerationProgress] = useState({
+        step: 'starting' as 'starting' | 'generating' | 'completed' | 'error',
+        message: '',
+        progress: 0,
+        error: ''
+    })
+    const [showVideoProgress, setShowVideoProgress] = useState(false)
+    const [playbackSpeed, setPlaybackSpeed] = useState(1)
+    const videoRef = useRef<HTMLVideoElement>(null)
 
     const handleTranslate = async () => {
         if (!englishText.trim()) return
@@ -83,18 +95,115 @@ export const TextToISL: React.FC = () => {
         }
     }
 
+    const handleClear = async () => {
+        setEnglishText('')
+        setTranslatedTexts({
+            hindi: '',
+            marathi: '',
+            gujarati: ''
+        })
+
+        // Clear generated video if exists
+        if (generatedVideoUrl) {
+            try {
+                // Extract temp video ID from the URL
+                const urlParts = generatedVideoUrl.split('/')
+                const tempVideoId = urlParts[urlParts.length - 1]
+
+                // Clean up temporary video
+                await islVideoGenerationService.cleanupTempVideo(tempVideoId)
+                console.log('Temporary video cleaned up successfully')
+            } catch (error) {
+                console.error('Failed to cleanup temporary video:', error)
+                // Don't show error toast as this is not critical
+            }
+        }
+
+        // Clear video state
+        setGeneratedVideoUrl(null)
+        setPlaybackSpeed(1) // Reset playback speed
+    }
+
+    const handlePlaybackSpeedChange = (speed: number) => {
+        setPlaybackSpeed(speed)
+    }
+
+    // Update video playback speed when playbackSpeed state changes
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.playbackRate = playbackSpeed
+        }
+    }, [playbackSpeed])
+
     const handleGenerateISL = async () => {
         if (!englishText.trim()) return
 
+        // Show progress modal and start video generation
+        setShowVideoProgress(true)
         setIsGeneratingISL(true)
+
+        // Initialize progress
+        setVideoGenerationProgress({
+            step: 'starting',
+            message: 'Initializing video generation...',
+            progress: 10,
+            error: ''
+        })
+
         try {
-            // TODO: Implement ISL video generation
-            // For now, we'll simulate the generation
-            setTimeout(() => {
-                setIsGeneratingISL(false)
-            }, 3000)
+            // Update progress - preparing request
+            setVideoGenerationProgress({
+                step: 'generating',
+                message: 'Generating ISL video...',
+                progress: 30,
+                error: ''
+            })
+
+            const result = await islVideoGenerationService.generateVideoForm(
+                englishText,
+                selectedModel,
+                1 // TODO: Get actual user ID from auth context
+            )
+
+            if (result.success) {
+                // Update progress - completed
+                setVideoGenerationProgress({
+                    step: 'completed',
+                    message: 'ISL video generated successfully!',
+                    progress: 100,
+                    error: ''
+                })
+
+                // Set the generated video URL
+                setGeneratedVideoUrl(islVideoGenerationService.getPreviewVideoUrl(result.temp_video_id))
+
+                // Close modal after a short delay
+                setTimeout(() => {
+                    setShowVideoProgress(false)
+                    toast.success('ISL video generated successfully!')
+                }, 1500)
+            } else {
+                throw new Error(result.error || 'Video generation failed')
+            }
+
+            setIsGeneratingISL(false)
         } catch (error) {
             console.error('ISL generation failed:', error)
+
+            // Update progress - error
+            setVideoGenerationProgress({
+                step: 'error',
+                message: 'Video generation failed',
+                progress: 0,
+                error: error instanceof Error ? error.message : 'Unknown error occurred'
+            })
+
+            // Close modal after a delay and show error
+            setTimeout(() => {
+                setShowVideoProgress(false)
+                toast.error('ISL video generation failed. Please try again.')
+            }, 2000)
+
             setIsGeneratingISL(false)
         }
     }
@@ -125,6 +234,7 @@ export const TextToISL: React.FC = () => {
                             />
                         </div>
 
+
                         {/* Translate and Clear Buttons */}
                         <div className="flex space-x-3">
                             <Button
@@ -146,10 +256,7 @@ export const TextToISL: React.FC = () => {
                                 )}
                             </Button>
                             <Button
-                                onClick={() => {
-                                    setEnglishText('')
-                                    setTranslatedTexts({ hindi: '', marathi: '', gujarati: '' })
-                                }}
+                                onClick={handleClear}
                                 disabled={isTranslating || isGeneratingISL}
                                 variant="outline"
                                 className="px-6"
@@ -204,6 +311,39 @@ export const TextToISL: React.FC = () => {
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">ISL Video Preview</h3>
 
+                            {/* AI Avatar Model Selection */}
+                            <div className="mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <label className="text-sm font-medium text-gray-700">
+                                        AI Avatar Model:
+                                    </label>
+                                    <div className="flex space-x-1">
+                                        <Button
+                                            variant={selectedModel === 'male' ? 'default' : 'outline'}
+                                            onClick={() => setSelectedModel('male')}
+                                            disabled={isTranslating || isGeneratingISL}
+                                            className={`px-3 py-1 text-xs ${selectedModel === 'male'
+                                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                                }`}
+                                        >
+                                            Male
+                                        </Button>
+                                        <Button
+                                            variant={selectedModel === 'female' ? 'default' : 'outline'}
+                                            onClick={() => setSelectedModel('female')}
+                                            disabled={isTranslating || isGeneratingISL}
+                                            className={`px-3 py-1 text-xs ${selectedModel === 'female'
+                                                ? 'bg-pink-600 hover:bg-pink-700 text-white'
+                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                                }`}
+                                        >
+                                            Female
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Video Preview Area */}
                             <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg h-80 flex items-center justify-center">
                                 {isGeneratingISL ? (
@@ -211,14 +351,51 @@ export const TextToISL: React.FC = () => {
                                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                                         <p className="text-gray-600">Generating ISL Video...</p>
                                     </div>
+                                ) : generatedVideoUrl ? (
+                                    <div className="w-full h-full">
+                                        <video
+                                            ref={videoRef}
+                                            className="w-full h-full object-contain rounded-lg"
+                                            controls
+                                            autoPlay
+                                            muted
+                                        >
+                                            <source src={generatedVideoUrl} type="video/mp4" />
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
                                 ) : (
                                     <div className="text-center text-gray-500">
                                         <Play className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                                         <p className="text-lg font-medium mb-2">ISL Video will appear here</p>
-                                        <p className="text-sm">Enter text and translate to generate ISL video</p>
+                                        <p className="text-sm">Enter text and click &quot;Generate ISL Video&quot; to create video</p>
                                     </div>
                                 )}
                             </div>
+
+                            {/* Playback Speed Controls */}
+                            {generatedVideoUrl && (
+                                <div className="mt-4">
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm font-medium text-gray-700">Speed:</span>
+                                        <div className="flex space-x-1">
+                                            {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                                                <Button
+                                                    key={speed}
+                                                    variant={playbackSpeed === speed ? 'default' : 'outline'}
+                                                    onClick={() => handlePlaybackSpeedChange(speed)}
+                                                    className={`px-2 py-1 text-xs ${playbackSpeed === speed
+                                                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                                        }`}
+                                                >
+                                                    {speed}x
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Generate ISL Button */}
                             <Button
@@ -282,6 +459,64 @@ export const TextToISL: React.FC = () => {
                             {/* Error Message */}
                             {translationProgress.step === 'error' && translationProgress.error && (
                                 <p className="text-red-600 text-sm mb-4">{translationProgress.error}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Video Generation Progress Modal */}
+            {showVideoProgress && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+                        <div className="text-center">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                {videoGenerationProgress.step === 'starting' && 'Starting Video Generation...'}
+                                {videoGenerationProgress.step === 'generating' && 'Generating ISL Video...'}
+                                {videoGenerationProgress.step === 'completed' && 'Video Generated!'}
+                                {videoGenerationProgress.step === 'error' && 'Video Generation Failed'}
+                            </h3>
+
+                            {/* Progress Bar */}
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                                <div
+                                    className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${videoGenerationProgress.progress}%` }}
+                                ></div>
+                            </div>
+
+                            {/* Progress Text */}
+                            <p className="text-gray-600 mb-4">{videoGenerationProgress.message}</p>
+
+                            {/* Progress Percentage */}
+                            <p className="text-sm text-gray-500 mb-4">{videoGenerationProgress.progress}%</p>
+
+                            {/* Loading Spinner */}
+                            {(videoGenerationProgress.step === 'starting' || videoGenerationProgress.step === 'generating') && (
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+                            )}
+
+                            {/* Success Icon */}
+                            {videoGenerationProgress.step === 'completed' && (
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            {/* Error Icon */}
+                            {videoGenerationProgress.step === 'error' && (
+                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            {/* Error Message */}
+                            {videoGenerationProgress.step === 'error' && videoGenerationProgress.error && (
+                                <p className="text-red-600 text-sm mb-4">{videoGenerationProgress.error}</p>
                             )}
                         </div>
                     </div>
