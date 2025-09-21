@@ -4,6 +4,8 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Languages, Play, Volume2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { translationService, TranslationProgress } from '@/services/translation-service'
 
 export const TextToISL: React.FC = () => {
     const [englishText, setEnglishText] = useState('')
@@ -14,24 +16,69 @@ export const TextToISL: React.FC = () => {
     })
     const [isTranslating, setIsTranslating] = useState(false)
     const [isGeneratingISL, setIsGeneratingISL] = useState(false)
+    const [showTranslationProgress, setShowTranslationProgress] = useState(false)
+    const [translationProgress, setTranslationProgress] = useState<TranslationProgress>({
+        step: 'starting',
+        message: '',
+        progress: 0,
+        error: ''
+    })
 
     const handleTranslate = async () => {
         if (!englishText.trim()) return
 
+        // Show progress modal and start translation process
+        setShowTranslationProgress(true)
         setIsTranslating(true)
+
         try {
-            // TODO: Implement translation API call
-            // For now, we'll simulate the translation
-            setTimeout(() => {
+            const result = await translationService.translateText(
+                englishText,
+                'en',
+                ['hi', 'mr', 'gu'],
+                (progress) => {
+                    setTranslationProgress(progress)
+                }
+            )
+
+            if (result.success && result.translations) {
+                // Update the translated texts
                 setTranslatedTexts({
-                    hindi: 'हिंदी अनुवाद यहाँ दिखाई देगा',
-                    marathi: 'मराठी अनुवाद येथे दिसेल',
-                    gujarati: 'ગુજરાતી અનુવાદ અહીં દેખાશે'
+                    hindi: result.translations.hi || '',
+                    marathi: result.translations.mr || '',
+                    gujarati: result.translations.gu || ''
                 })
-                setIsTranslating(false)
-            }, 2000)
+
+                // Close modal after a short delay
+                setTimeout(() => {
+                    setShowTranslationProgress(false)
+                    toast.success('Translation completed successfully!')
+                }, 1500)
+            } else {
+                // Error is already handled by the service and progress callback
+                setTimeout(() => {
+                    setShowTranslationProgress(false)
+                    toast.error(result.error || 'Translation failed. Please try again.')
+                }, 2000)
+            }
+
+            setIsTranslating(false)
         } catch (error) {
             console.error('Translation failed:', error)
+
+            // Fallback error handling
+            setTranslationProgress({
+                step: 'error',
+                message: 'Translation failed',
+                progress: 0,
+                error: error instanceof Error ? error.message : 'Unknown error occurred'
+            })
+
+            setTimeout(() => {
+                setShowTranslationProgress(false)
+                toast.error('Translation failed. Please try again.')
+            }, 2000)
+
             setIsTranslating(false)
         }
     }
@@ -78,16 +125,38 @@ export const TextToISL: React.FC = () => {
                             />
                         </div>
 
-                        {/* Translate Button */}
-                        <Button
-                            onClick={handleTranslate}
-                            disabled={!englishText.trim() || isTranslating || isGeneratingISL}
-                            className="w-full"
-                            style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}
-                        >
-                            <Languages className="w-4 h-4 mr-2" />
-                            {isTranslating ? 'Translating...' : 'Translate to Hindi, Marathi & Gujarati'}
-                        </Button>
+                        {/* Translate and Clear Buttons */}
+                        <div className="flex space-x-3">
+                            <Button
+                                onClick={handleTranslate}
+                                disabled={!englishText.trim() || isTranslating || isGeneratingISL}
+                                className="flex-1 text-white"
+                                style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}
+                            >
+                                {isTranslating ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Translating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Languages className="w-4 h-4 mr-2" />
+                                        Translate
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    setEnglishText('')
+                                    setTranslatedTexts({ hindi: '', marathi: '', gujarati: '' })
+                                }}
+                                disabled={isTranslating || isGeneratingISL}
+                                variant="outline"
+                                className="px-6"
+                            >
+                                Clear
+                            </Button>
+                        </div>
 
                         {/* Translated Texts */}
                         {(translatedTexts.hindi || translatedTexts.marathi || translatedTexts.gujarati) && (
@@ -165,6 +234,59 @@ export const TextToISL: React.FC = () => {
                     </div>
                 </div>
             </Card>
+
+            {/* Translation Progress Modal */}
+            {showTranslationProgress && (
+                <div className="fixed inset-0 flex items-center justify-center z-50">
+                    <div className="bg-white p-8 max-w-md w-full mx-4">
+                        <div className="text-center">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Translating Text</h3>
+
+                            {/* Progress Bar */}
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                                <div
+                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                    style={{ width: `${translationProgress.progress}%` }}
+                                ></div>
+                            </div>
+
+                            {/* Progress Text */}
+                            <p className="text-gray-600 mb-4">{translationProgress.message}</p>
+
+                            {/* Progress Percentage */}
+                            <p className="text-sm text-gray-500 mb-4">{translationProgress.progress}%</p>
+
+                            {/* Loading Spinner */}
+                            {translationProgress.step === 'translating' && (
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            )}
+
+                            {/* Success Icon */}
+                            {translationProgress.step === 'completed' && (
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            {/* Error Icon */}
+                            {translationProgress.step === 'error' && (
+                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </div>
+                            )}
+
+                            {/* Error Message */}
+                            {translationProgress.step === 'error' && translationProgress.error && (
+                                <p className="text-red-600 text-sm mb-4">{translationProgress.error}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
