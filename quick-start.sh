@@ -31,6 +31,33 @@ echo "    SignVerse Quick Start"
 echo "=========================================="
 echo ""
 
+# Function to stop existing services
+stop_services() {
+    print_info "Stopping existing services..."
+    
+    # Stop backend (port 5001)
+    BACKEND_PID=$(lsof -ti:5001 2>/dev/null || echo "")
+    if [ ! -z "$BACKEND_PID" ]; then
+        print_info "Stopping backend (PID: $BACKEND_PID)..."
+        kill $BACKEND_PID 2>/dev/null || true
+        sleep 1
+    fi
+    
+    # Stop frontend (port 9002)
+    FRONTEND_PID=$(lsof -ti:9002 2>/dev/null || echo "")
+    if [ ! -z "$FRONTEND_PID" ]; then
+        print_info "Stopping frontend (PID: $FRONTEND_PID)..."
+        kill $FRONTEND_PID 2>/dev/null || true
+        sleep 1
+    fi
+    
+    # Kill any remaining processes
+    jobs -p | xargs -r kill 2>/dev/null || true
+    
+    print_success "Existing services stopped"
+    echo ""
+}
+
 # Function to cleanup on exit
 cleanup() {
     echo ""
@@ -41,6 +68,12 @@ cleanup() {
 }
 
 trap cleanup SIGINT SIGTERM
+
+# Stop existing services first
+stop_services
+
+# Wait a moment to ensure ports are free
+sleep 2
 
 # Build frontend first
 print_info "Building frontend..."
@@ -53,7 +86,7 @@ cd ..
 print_info "Starting backend server..."
 cd backend
 source venv/bin/activate
-python run.py &
+python run_https.py &
 BACKEND_PID=$!
 cd ..
 
@@ -77,8 +110,8 @@ echo "=========================================="
 echo ""
 print_info "Access URLs:"
 echo "  • Frontend: https://$IP:9002"
-echo "  • Backend:  http://$IP:5001"
-echo "  • API Docs: http://$IP:5001/docs"
+echo "  • Backend:  https://$IP:5001"
+echo "  • API Docs: https://$IP:5001/docs"
 echo ""
 print_warning "Press Ctrl+C to stop all services"
 echo ""

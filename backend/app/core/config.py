@@ -31,9 +31,11 @@ class Settings(BaseSettings):
     # CORS Settings
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000", "http://localhost:8080", "http://localhost:9002",
-        "https://localhost:3000", "https://localhost:9002", 
+        "https://localhost:3000", "https://localhost:9002",
         "https://192.168.1.8:3000", "https://192.168.1.8:9002",
-        "http://192.168.1.8:3000", "http://192.168.1.8:9002"
+        "http://192.168.1.8:3000", "http://192.168.1.8:5001",
+        "https://0.0.0.0:9002", "http://0.0.0.0:9002",
+        "https://192.168.1.8:5001"
     ]
 
     # Environment
