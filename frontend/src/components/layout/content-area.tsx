@@ -2,6 +2,7 @@
 
 import { RouteManagement } from '@/components/route-management/route-management'
 import { TextToISL } from '@/components/text-to-isl/text-to-isl'
+import AudioToISL from '@/components/audio-to-isl/audio-to-isl'
 import { ISLDictionary } from '@/components/isl-dictionary/isl-dictionary'
 
 interface ContentAreaProps {
@@ -110,24 +111,7 @@ export const ContentArea: React.FC<ContentAreaProps> = ({ activeMenu }) => {
                 return <TextToISL />
 
             case 'audio-file-to-isl':
-                return (
-                    <div className="space-y-6">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Audio File to ISL</h1>
-                            <p className="text-gray-600">Upload audio files to convert to Indian Sign Language video</p>
-                        </div>
-                        <div className="bg-white p-8 border border-gray-200 text-center">
-                            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                            </svg>
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">Upload Audio File</h3>
-                            <p className="text-gray-600 mb-6">Drag and drop your audio file here or click to browse</p>
-                            <button className="px-6 py-3 text-white font-medium transition-colors" style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}>
-                                Choose Audio File
-                            </button>
-                        </div>
-                    </div>
-                )
+                return <AudioToISL />
 
             case 'speech-to-isl':
                 return (

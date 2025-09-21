@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, credentials, train_routes, train_route_translations, translation, isl_videos, isl_video_generation
+from app.api.v1.endpoints import health, auth, credentials, train_routes, train_route_translations, translation, isl_videos, isl_video_generation, language_detection, audio_translation, audio_upload
 
 api_router = APIRouter()
 
@@ -17,3 +17,9 @@ api_router.include_router(
     isl_videos.router, prefix="/isl-videos", tags=["isl-videos"])
 api_router.include_router(
     isl_video_generation.router, prefix="/isl-video-generation", tags=["isl-video-generation"])
+api_router.include_router(
+    language_detection.router, prefix="/language-detection", tags=["language-detection"])
+api_router.include_router(
+    audio_translation.router, prefix="/audio-translation", tags=["audio-translation"])
+api_router.include_router(
+    audio_upload.router, prefix="/audio-upload", tags=["audio-upload"])

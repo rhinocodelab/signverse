@@ -50,11 +50,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
 
     # GCP Settings
     GCP_PROJECT_ID: Optional[str] = None
     GCP_CREDENTIALS_FILE: Optional[str] = None
     GCP_SERVICE_ACCOUNT_KEY: Optional[str] = None
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
 
     # Other API Keys
     STRIPE_SECRET_KEY: Optional[str] = None

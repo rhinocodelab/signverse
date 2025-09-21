@@ -16,4 +16,7 @@ google-cloud-storage
 google-cloud-translate
 google-cloud-vision
 google-cloud-texttospeech
+google-cloud-speech
 google-auth
+google-generativeai
+librosa
