@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# SignVerse Quick Start Script
+# Simple script to quickly start both services for development
+
+set -e
+
+# Colors
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+# Get current IP
+IP=$(ip route get 8.8.8.8 | awk '{print $7; exit}' 2>/dev/null || echo "localhost")
+
+echo "=========================================="
+echo "    SignVerse Quick Start"
+echo "=========================================="
+echo ""
+
+# Function to cleanup on exit
+cleanup() {
+    echo ""
+    print_info "Stopping services..."
+    jobs -p | xargs -r kill
+    print_success "Services stopped"
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+# Build frontend first
+print_info "Building frontend..."
+cd frontend
+npm run build
+print_success "Frontend build completed"
+cd ..
+
+# Start backend
+print_info "Starting backend server..."
+cd backend
+source venv/bin/activate
+python run.py &
+BACKEND_PID=$!
+cd ..
+
+# Wait for backend to start
+sleep 2
+
+# Start frontend
+print_info "Starting frontend server..."
+cd frontend
+npm run dev:https &
+FRONTEND_PID=$!
+cd ..
+
+# Wait for frontend to start
+sleep 3
+
+echo ""
+echo "=========================================="
+print_success "SignVerse Started Successfully!"
+echo "=========================================="
+echo ""
+print_info "Access URLs:"
+echo "  • Frontend: https://$IP:9002"
+echo "  • Backend:  http://$IP:5001"
+echo "  • API Docs: http://$IP:5001/docs"
+echo ""
+print_warning "Press Ctrl+C to stop all services"
+echo ""
+
+# Wait for interrupt
+wait
