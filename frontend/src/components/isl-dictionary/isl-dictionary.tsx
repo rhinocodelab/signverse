@@ -149,8 +149,9 @@ export const ISLDictionary: React.FC = () => {
                 if (fileInputRef.current) {
                     fileInputRef.current.value = ''
                 }
-                // Refresh videos list
+                // Refresh videos list and statistics
                 loadVideos()
+                loadVideoStatistics()
             }, 1000)
 
         } catch (error) {
@@ -187,19 +188,11 @@ export const ISLDictionary: React.FC = () => {
             })
         } catch (error) {
             console.error('Failed to load video statistics:', error)
-            // Fallback to calculating from current page videos
-            calculateVideoStats(videos)
+            // Set default stats on error
+            setVideoStats({ total: 0, male: 0, female: 0 })
         }
-    }, [videos])
+    }, [])
 
-    const calculateVideoStats = (videoList: ISLVideo[]) => {
-        const stats = {
-            total: videoList.length,
-            male: videoList.filter(video => video.model_type === 'male').length,
-            female: videoList.filter(video => video.model_type === 'female').length
-        }
-        setVideoStats(stats)
-    }
 
     const loadVideos = useCallback(async () => {
         setIsLoading(true)
@@ -223,9 +216,6 @@ export const ISLDictionary: React.FC = () => {
             const data = await response.json()
             setVideos(data.videos || [])
             setTotalVideos(data.total || 0)
-
-            // Load overall statistics
-            loadVideoStatistics()
         } catch (error) {
             console.error('Failed to load videos:', error)
             setVideos([]) // Set empty array on error
@@ -234,7 +224,7 @@ export const ISLDictionary: React.FC = () => {
         } finally {
             setIsLoading(false)
         }
-    }, [filterModel, searchTerm, currentPage, loadVideoStatistics])
+    }, [filterModel, searchTerm, currentPage])
 
     const handleVideoPlay = (videoId: number) => {
         const video = videos.find(v => v.id === videoId)
@@ -262,10 +252,11 @@ export const ISLDictionary: React.FC = () => {
                 throw new Error(`Failed to delete video: ${response.statusText}`)
             }
 
-            // Close modal and refresh videos list
+            // Close modal and refresh videos list and statistics
             setShowDeleteModal(false)
             setVideoToDelete(null)
             loadVideos()
+            loadVideoStatistics()
         } catch (error) {
             console.error('Failed to delete video:', error)
             alert('Failed to delete video. Please try again.')
@@ -329,8 +320,9 @@ export const ISLDictionary: React.FC = () => {
             setTimeout(() => {
                 setShowSyncProgressModal(false)
                 setSelectedSyncModel(null)
-                // Refresh videos list
+                // Refresh videos list and statistics
                 loadVideos()
+                loadVideoStatistics()
             }, 2000)
 
         } catch (error) {
@@ -372,6 +364,11 @@ export const ISLDictionary: React.FC = () => {
     useEffect(() => {
         loadVideos()
     }, [loadVideos])
+
+    // Load statistics on component mount
+    useEffect(() => {
+        loadVideoStatistics()
+    }, [loadVideoStatistics])
 
     // Reset to page 1 when search or filter changes
     useEffect(() => {
