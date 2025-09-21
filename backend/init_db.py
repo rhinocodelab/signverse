@@ -9,6 +9,7 @@ from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.train_route import TrainRoute
 from app.models.train_route_translation import TrainRouteTranslation
+from app.models.isl_video import ISLVideo
 from app.db.database import engine, AsyncSessionLocal, Base
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio

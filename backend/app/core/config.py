@@ -35,12 +35,12 @@ class Settings(BaseSettings):
         "https://192.168.1.8:3000", "https://192.168.1.8:9002",
         "http://192.168.1.8:3000", "http://192.168.1.8:5001",
         "https://0.0.0.0:9002", "http://0.0.0.0:9002",
-        "https://192.168.1.8:5001"
+        "https://192.168.1.8:5001", "https://0.0.0.0:5001"
     ]
 
     # Environment
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # Credential Paths
     CREDENTIALS_DIR: str = "credentials"
