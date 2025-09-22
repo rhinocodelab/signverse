@@ -311,39 +311,6 @@ export const TextToISL: React.FC = () => {
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">ISL Video Preview</h3>
 
-                            {/* AI Avatar Model Selection */}
-                            <div className="mb-4">
-                                <div className="flex items-center space-x-3">
-                                    <label className="text-sm font-medium text-gray-700">
-                                        AI Avatar Model:
-                                    </label>
-                                    <div className="flex space-x-1">
-                                        <Button
-                                            variant={selectedModel === 'male' ? 'default' : 'outline'}
-                                            onClick={() => setSelectedModel('male')}
-                                            disabled={isTranslating || isGeneratingISL}
-                                            className={`px-3 py-1 text-xs ${selectedModel === 'male'
-                                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                                                }`}
-                                        >
-                                            Male
-                                        </Button>
-                                        <Button
-                                            variant={selectedModel === 'female' ? 'default' : 'outline'}
-                                            onClick={() => setSelectedModel('female')}
-                                            disabled={isTranslating || isGeneratingISL}
-                                            className={`px-3 py-1 text-xs ${selectedModel === 'female'
-                                                ? 'bg-pink-600 hover:bg-pink-700 text-white'
-                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                                                }`}
-                                        >
-                                            Female
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-
                             {/* Video Preview Area */}
                             <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg h-80 flex items-center justify-center">
                                 {isGeneratingISL ? (
@@ -392,6 +359,41 @@ export const TextToISL: React.FC = () => {
                                                     {speed}x
                                                 </Button>
                                             ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* AI Avatar Model Selection - Only show when translation is complete */}
+                            {(translatedTexts.hindi || translatedTexts.marathi || translatedTexts.gujarati) && (
+                                <div className="mt-4 mb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <label className="text-sm font-medium text-gray-700">
+                                            AI Avatar Model:
+                                        </label>
+                                        <div className="flex space-x-1">
+                                            <Button
+                                                variant={selectedModel === 'male' ? 'default' : 'outline'}
+                                                onClick={() => setSelectedModel('male')}
+                                                disabled={isTranslating || isGeneratingISL}
+                                                className={`px-3 py-1 text-xs ${selectedModel === 'male'
+                                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                                    }`}
+                                            >
+                                                Male
+                                            </Button>
+                                            <Button
+                                                variant={selectedModel === 'female' ? 'default' : 'outline'}
+                                                onClick={() => setSelectedModel('female')}
+                                                disabled={isTranslating || isGeneratingISL}
+                                                className={`px-3 py-1 text-xs ${selectedModel === 'female'
+                                                    ? 'bg-pink-600 hover:bg-pink-700 text-white'
+                                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                                    }`}
+                                            >
+                                                Female
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
