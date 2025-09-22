@@ -210,10 +210,14 @@ export const TextToISL: React.FC = () => {
 
     return (
         <div className="p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">Text to ISL</h1>
-                <p className="text-gray-600">Convert English text to Indian Sign Language video</p>
-            </div>
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                        <Languages className="w-8 h-8 text-blue-600" />
+                        Text to ISL
+                    </h1>
+                    <p className="text-gray-600">Convert English text to Indian Sign Language video</p>
+                </div>
 
             <Card className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -524,6 +528,7 @@ export const TextToISL: React.FC = () => {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     )
 }

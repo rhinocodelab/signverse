@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.train_route import TrainRoute
 from app.models.train_route_translation import TrainRouteTranslation
 from app.models.isl_video import ISLVideo
+from app.models.general_announcement import GeneralAnnouncement
 from app.db.database import engine, AsyncSessionLocal, Base
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio

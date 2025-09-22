@@ -424,7 +424,10 @@ const SpeechToISL: React.FC = () => {
         <div className="p-6">
             <div className="max-w-7xl mx-auto">
                 <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Speech to ISL</h1>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                        <Mic className="w-8 h-8 text-blue-600" />
+                        Speech to ISL
+                    </h1>
                     <p className="text-gray-600">Record your speech to convert it to Indian Sign Language video</p>
                 </div>
 

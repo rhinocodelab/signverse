@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Upload, Play, Search, Filter, User, Users, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Upload, Play, Search, Filter, User, Users, Trash2, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react'
 
 interface ISLVideo {
     id: number
@@ -377,10 +377,14 @@ export const ISLDictionary: React.FC = () => {
 
     return (
         <div className="p-6">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">ISL Dictionary</h1>
-                <p className="text-gray-600">Upload and manage Indian Sign Language videos</p>
-            </div>
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                        <BookOpen className="w-8 h-8 text-blue-600" />
+                        ISL Dictionary
+                    </h1>
+                    <p className="text-gray-600">Upload and manage Indian Sign Language videos</p>
+                </div>
 
             {/* Video Statistics */}
             <div className="mb-6">
@@ -995,6 +999,7 @@ export const ISLDictionary: React.FC = () => {
                     </div>
                 </div>
             )}
+            </div>
         </div>
     )
 }

@@ -254,17 +254,19 @@ export const RouteManagement: React.FC = () => {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-900">Route Management</h1>
-                <Button
-                    onClick={() => setShowCreateModal(true)}
-                    className="text-white"
-                    style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}
-                >
-                    Add Route
-                </Button>
-            </div>
+        <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h1 className="text-3xl font-bold text-gray-900">Route Management</h1>
+                        <Button
+                            onClick={() => setShowCreateModal(true)}
+                            className="text-white"
+                            style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}
+                        >
+                            Add Route
+                        </Button>
+                    </div>
 
 
             {/* Search and Train Routes Table */}
@@ -860,6 +862,8 @@ export const RouteManagement: React.FC = () => {
                 onRetry={handleRetryTranslation}
                 canRetry={translationProgress.step === 'error' && !!pendingRouteData}
             />
+                </div>
+            </div>
         </div>
     )
 }

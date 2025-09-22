@@ -11,7 +11,10 @@ import {
     Languages,
     Volume2,
     MessageSquare,
-    Hand
+    Hand,
+    Megaphone,
+    Mic,
+    BookOpen
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -58,7 +61,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
                 {
                     id: 'speech-to-isl',
                     label: 'Speech to ISL',
-                    icon: MessageSquare
+                    icon: Mic
+                },
+                {
+                    id: 'general-announcement-isl',
+                    label: 'General Announcement ISL',
+                    icon: Megaphone
                 }
             ]
         },
@@ -70,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
                 {
                     id: 'isl-dictionary',
                     label: 'ISL Dictionary',
-                    icon: Languages
+                    icon: BookOpen
                 }
             ]
         },
