@@ -434,7 +434,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
             {/* Video Modal */}
             {showVideoModal && selectedVideo && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-transparent">
-                    <div className="bg-white p-6 max-w-4xl w-full mx-4 rounded-none">
+                    <div className="bg-white p-6 max-w-4xl w-full mx-4 rounded-none shadow-2xl">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold">ISL Video</h3>
                             <Button
@@ -462,7 +462,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && selectedAnnouncement && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-                    <div className="bg-white p-6 max-w-md w-full mx-4 rounded-none">
+                    <div className="bg-white p-6 max-w-md w-full mx-4 rounded-none shadow-2xl">
                         <div className="text-center">
                             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                                 <Trash2 className="h-6 w-6 text-red-600" />

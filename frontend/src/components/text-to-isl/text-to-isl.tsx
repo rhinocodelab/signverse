@@ -421,7 +421,7 @@ export const TextToISL: React.FC = () => {
             {/* Translation Progress Modal */}
             {showTranslationProgress && (
                 <div className="fixed inset-0 flex items-center justify-center z-50">
-                    <div className="bg-white p-8 max-w-md w-full mx-4">
+                    <div className="bg-white p-8 max-w-md w-full mx-4 shadow-2xl">
                         <div className="text-center">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Translating Text</h3>
 

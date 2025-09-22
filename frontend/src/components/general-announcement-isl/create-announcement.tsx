@@ -604,7 +604,7 @@ export const CreateAnnouncement: React.FC<CreateAnnouncementProps> = ({ onBack }
             {/* Translation Progress Modal */}
             {showTranslationProgress && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-transparent">
-                    <div className="bg-white p-8 max-w-md w-full mx-4 rounded-lg">
+                    <div className="bg-white p-8 max-w-md w-full mx-4 rounded-lg shadow-2xl">
                         <div className="text-center">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Translating Text</h3>
                             <div className="mb-4">
@@ -627,7 +627,7 @@ export const CreateAnnouncement: React.FC<CreateAnnouncementProps> = ({ onBack }
             {/* Video Generation Progress Modal */}
             {showVideoProgress && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-transparent">
-                    <div className="bg-white p-8 max-w-md w-full mx-4 rounded-lg">
+                    <div className="bg-white p-8 max-w-md w-full mx-4 rounded-lg shadow-2xl">
                         <div className="text-center">
                             <h3 className="text-lg font-semibold text-gray-900 mb-4">Generating ISL Video</h3>
                             <div className="mb-4">

@@ -653,7 +653,7 @@ const SpeechToISL: React.FC = () => {
             {/* Progress Modal */}
             {showProgressModal && (
                 <div className="fixed inset-0 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold">Processing Speech</h3>
                             <Button
