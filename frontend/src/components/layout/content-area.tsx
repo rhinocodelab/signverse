@@ -6,6 +6,7 @@ import AudioToISL from '@/components/audio-to-isl/audio-to-isl'
 import SpeechToISL from '@/components/speech-to-isl/speech-to-isl'
 import { ISLDictionary } from '@/components/isl-dictionary/isl-dictionary'
 import { GeneralAnnouncementISL } from '@/components/general-announcement-isl/general-announcement-isl'
+import { AnnouncementTemplates } from '@/components/announcement-templates/announcement-templates'
 
 interface ContentAreaProps {
     activeMenu: string
@@ -127,6 +128,9 @@ export const ContentArea: React.FC<ContentAreaProps> = ({ activeMenu }) => {
 
             case 'general-announcement-isl':
                 return <GeneralAnnouncementISL />
+
+            case 'announcement-templates':
+                return <AnnouncementTemplates />
 
             case 'settings':
                 return (

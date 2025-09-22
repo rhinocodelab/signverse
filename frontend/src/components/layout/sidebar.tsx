@@ -10,11 +10,11 @@ import {
     Brain,
     Languages,
     Volume2,
-    MessageSquare,
     Hand,
     Megaphone,
     Mic,
-    BookOpen
+    BookOpen,
+    FileText
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -67,6 +67,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
                     id: 'general-announcement-isl',
                     label: 'General Announcement ISL',
                     icon: Megaphone
+                },
+                {
+                    id: 'announcement-templates',
+                    label: 'Announcement Templates',
+                    icon: FileText
                 }
             ]
         },

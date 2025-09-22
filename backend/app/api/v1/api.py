@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, credentials, train_routes, train_route_translations, translation, isl_videos, isl_video_generation, language_detection, audio_translation, audio_upload, speech_to_isl, general_announcements
+from app.api.v1.endpoints import health, auth, credentials, train_routes, train_route_translations, translation, isl_videos, isl_video_generation, language_detection, audio_translation, audio_upload, speech_to_isl, general_announcements, announcement_templates
 
 api_router = APIRouter()
 
@@ -27,3 +27,5 @@ api_router.include_router(
     speech_to_isl.router, prefix="/speech-to-isl", tags=["speech-to-isl"])
 api_router.include_router(
     general_announcements.router, prefix="/general-announcements", tags=["general-announcements"])
+api_router.include_router(
+    announcement_templates.router, prefix="/announcement-templates", tags=["announcement-templates"])
