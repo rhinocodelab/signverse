@@ -47,7 +47,7 @@ async def get_announcements(
         announcements = await announcement_service.search_announcements(search_params)
         
         # Get total count for pagination
-        total_count = len(announcements)
+        total_count = await announcement_service.count_announcements(search_params)
         
         return GeneralAnnouncementListResponse(
             announcements=announcements,

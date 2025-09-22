@@ -78,6 +78,38 @@ class GeneralAnnouncementService:
         result = await self.db.execute(query)
         return result.scalars().all()
 
+    async def count_announcements(self, search_params: GeneralAnnouncementSearch) -> int:
+        """Count announcements with filters (without pagination)"""
+        query = select(func.count(GeneralAnnouncementModel.id))
+
+        # Filter by category
+        if search_params.category:
+            query = query.where(GeneralAnnouncementModel.category == search_params.category)
+
+        # Filter by model
+        if search_params.model:
+            query = query.where(GeneralAnnouncementModel.model == search_params.model)
+
+        # Filter by active status
+        if search_params.is_active is not None:
+            query = query.where(GeneralAnnouncementModel.is_active == search_params.is_active)
+
+        # Search by text
+        if search_params.search_text:
+            search_term = f"%{search_params.search_text}%"
+            query = query.where(
+                or_(
+                    GeneralAnnouncementModel.announcement_name.ilike(search_term),
+                    GeneralAnnouncementModel.announcement_text_english.ilike(search_term),
+                    GeneralAnnouncementModel.announcement_text_hindi.ilike(search_term),
+                    GeneralAnnouncementModel.announcement_text_gujarati.ilike(search_term),
+                    GeneralAnnouncementModel.announcement_text_marathi.ilike(search_term)
+                )
+            )
+
+        result = await self.db.execute(query)
+        return result.scalar()
+
     async def update_announcement(self, announcement_id: int, announcement_update: GeneralAnnouncementUpdate) -> Optional[GeneralAnnouncementModel]:
         """Update announcement"""
         db_announcement = await self.get_announcement(announcement_id)

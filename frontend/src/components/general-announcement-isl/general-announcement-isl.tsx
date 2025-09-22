@@ -62,7 +62,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
                 limit: limit.toString()
             })
 
-                    if (searchTerm) params.append('search_text', searchTerm)
+                    if (searchTerm) params.append('search', searchTerm)
                     if (selectedCategory !== 'all') params.append('category', selectedCategory)
                     if (selectedModel !== 'all') params.append('model', selectedModel)
 
@@ -394,12 +394,12 @@ export const GeneralAnnouncementISL: React.FC = () => {
                                 </p>
                             </div>
                             <div>
-                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                <nav className="relative z-0 inline-flex rounded-none shadow-sm -space-x-px">
                                     <Button
                                         onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                                         disabled={currentPage === 1}
                                         variant="outline"
-                                        className="rounded-l-md"
+                                        className="rounded-none"
                                     >
                                         Previous
                                     </Button>
@@ -420,7 +420,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
                                         onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                                         disabled={currentPage === totalPages}
                                         variant="outline"
-                                        className="rounded-r-md"
+                                        className="rounded-none"
                                     >
                                         Next
                                     </Button>
