@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react'
 import {
-    Settings,
     BarChart3,
     Route,
     ChevronDown,
@@ -86,11 +85,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
                     icon: BookOpen
                 }
             ]
-        },
-        {
-            id: 'settings',
-            label: 'Settings',
-            icon: Settings
         }
     ]
 
@@ -130,8 +124,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
                             {/* Main Menu Item */}
                             <button
                                 onClick={() => hasSubmenu ? handleCategoryToggle(item.id) : onMenuChange(item.id)}
-                                className={`w-full flex items-center space-x-3 p-3 rounded-lg transition-colors ${isActive
-                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                className={`w-full flex items-center space-x-3 p-3 transition-colors ${isActive
+                                    ? 'bg-blue-50 text-blue-700'
                                     : 'text-gray-700 hover:bg-gray-50'
                                     }`}
                             >
@@ -157,8 +151,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
                                             <button
                                                 key={subItem.id}
                                                 onClick={() => onMenuChange(subItem.id)}
-                                                className={`w-full flex items-center space-x-3 p-2 rounded-lg transition-colors ${isSubActive
-                                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                                className={`w-full flex items-center space-x-3 p-2 transition-colors ${isSubActive
+                                                    ? 'bg-blue-50 text-blue-700'
                                                     : 'text-gray-600 hover:bg-gray-50'
                                                     }`}
                                             >
