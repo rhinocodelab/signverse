@@ -25,14 +25,9 @@ interface AnnouncementTemplate {
     updated_at: string
 }
 
-interface TemplateStatistics {
-    total_templates: number
-    templates_by_category: Record<string, number>
-}
 
 export const AnnouncementTemplates: React.FC = () => {
     const [templates, setTemplates] = useState<AnnouncementTemplate[]>([])
-    const [statistics, setStatistics] = useState<TemplateStatistics | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -76,19 +71,6 @@ export const AnnouncementTemplates: React.FC = () => {
         }
     }, [currentPage, limit, searchTerm, selectedCategory])
 
-    // Fetch statistics
-    const fetchStatistics = useCallback(async () => {
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/announcement-templates/statistics/overview`)
-            if (response.ok) {
-                const data = await response.json()
-                setStatistics(data)
-            }
-        } catch (error) {
-            console.error('Failed to fetch statistics:', error)
-        }
-    }, [])
-
     // Fetch categories
     const fetchCategories = useCallback(async () => {
         try {
@@ -103,9 +85,8 @@ export const AnnouncementTemplates: React.FC = () => {
 
     useEffect(() => {
         fetchTemplates()
-        fetchStatistics()
         fetchCategories()
-    }, [fetchTemplates, fetchStatistics, fetchCategories])
+    }, [fetchTemplates, fetchCategories])
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault()
@@ -135,7 +116,6 @@ export const AnnouncementTemplates: React.FC = () => {
                 setTimeout(() => {
                     console.log('Refreshing templates after delete...')
                     fetchTemplates()
-                    fetchStatistics()
                 }, 100)
                 
                 toast.success('Template deleted successfully!')
@@ -199,15 +179,6 @@ export const AnnouncementTemplates: React.FC = () => {
                         </Button>
                     </div>
 
-                    {/* Statistics */}
-                    {statistics && (
-                        <div className="text-sm text-gray-600">
-                            Total: {statistics.total_templates} | 
-                            {Object.entries(statistics.templates_by_category).map(([category, count]) => (
-                                <span key={category}> {category}: {count}</span>
-                            ))}
-                        </div>
-                    )}
 
                     {/* Search and Templates Table */}
                     <Card className="overflow-hidden">
@@ -446,7 +417,6 @@ export const AnnouncementTemplates: React.FC = () => {
                     onSuccess={() => {
                         setShowAddModal(false)
                         fetchTemplates()
-                        fetchStatistics()
                     }}
                 />
             )}
