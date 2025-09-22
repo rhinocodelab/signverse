@@ -15,9 +15,9 @@ python-dotenv
 google-cloud-storage
 google-cloud-translate
 google-cloud-vision
-google-cloud-texttospeech
-google-cloud-speech
 google-auth
 google-generativeai
 librosa
 pydub
+google-cloud-speech==2.27.0
+google-cloud-texttospeech==2.28.0

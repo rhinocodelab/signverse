@@ -20,23 +20,11 @@ from app.services.isl_video_service import get_isl_video_service, ISLVideoServic
 router = APIRouter()
 
 
-def get_project_root():
-    """Get the project root directory dynamically"""
-    current_file = Path(__file__)
-    # Look for the project root by going up until we find the SignVerse directory
-    current = current_file.parent
-    while current != current.parent:  # Stop at root
-        if current.name == "SignVerse":
-            return current
-        current = current.parent
-    # Fallback: go up 5 levels from current file
-    return current_file.parent.parent.parent.parent.parent
-
-
 def get_public_videos_path():
     """Get the public videos directory path"""
-    project_root = get_project_root()
-    return project_root / "frontend" / "public" / "videos" / "isl"
+    # Use relative path from current working directory (backend)
+    # Go up one level to signverse, then to frontend/public/videos/isl
+    return Path("../frontend/public/videos/isl").resolve()
 
 
 @router.get("/test")
@@ -462,14 +450,30 @@ async def stream_video(video_id: int, db: AsyncSession = Depends(get_db)):
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
 
+        # Dynamically resolve the video path instead of using stored path
+        public_videos_path = get_public_videos_path()
+        
+        # Extract the relative path from the stored path
+        # e.g., "/home/funix/Projects/SignVerse/frontend/public/videos/isl/female-model/please/please.mp4"
+        # becomes "female-model/please/please.mp4"
+        stored_path = video.video_path
+        if "/videos/isl/" in stored_path:
+            relative_path = stored_path.split("/videos/isl/")[-1]
+        else:
+            # Fallback: use filename if path structure is different
+            relative_path = f"{video.model_type}-model/{video.filename}"
+        
+        # Construct the actual file path
+        actual_video_path = public_videos_path / relative_path
+        
         # Check if the video file exists
-        if not os.path.exists(video.video_path):
+        if not os.path.exists(actual_video_path):
             raise HTTPException(
-                status_code=404, detail=f"Video file not found at: {video.video_path}")
+                status_code=404, detail=f"Video file not found at: {actual_video_path}")
 
         def iterfile():
             try:
-                with open(video.video_path, mode="rb") as file_like:
+                with open(actual_video_path, mode="rb") as file_like:
                     yield from file_like
             except Exception as e:
                 print(f"Error reading file: {e}")

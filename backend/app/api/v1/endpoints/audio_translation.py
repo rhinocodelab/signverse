@@ -136,14 +136,20 @@ def get_audio_info(audio_path: str) -> dict:
 def get_cached_transcript(file_hash: str, language_code: str) -> Optional[Dict[str, Any]]:
     """Check if transcript is already cached"""
     cache_file = CACHE_DIR / f"{file_hash}_{language_code}.json"
+    logger.info(f"Checking cache for file_hash: {file_hash}, language_code: {language_code}")
+    logger.info(f"Cache file path: {cache_file}")
+    
     if cache_file.exists():
         try:
             with open(cache_file, 'r') as f:
                 cached_data = json.load(f)
-                logger.info(f"Found cached transcript for {file_hash}")
+                logger.info(f"Found cached transcript for {file_hash} with language {language_code}")
+                logger.info(f"Cached transcript preview: {cached_data.get('transcript', '')[:100]}...")
                 return cached_data
         except Exception as e:
             logger.warning(f"Failed to read cache file: {e}")
+    else:
+        logger.info(f"No cached transcript found for {file_hash} with language {language_code}")
     return None
 
 
@@ -189,7 +195,16 @@ async def transcribe_audio(
         enable_word_time_offsets: Enable word-level timing information
     """
 
-    # Validate language code
+    # Debug: Log all form data received
+    logger.info(f"=== TRANSCRIPTION REQUEST DEBUG ===")
+    logger.info(f"File name: {file.filename}")
+    logger.info(f"File content type: {file.content_type}")
+    logger.info(f"Received language_code: {language_code}")
+    logger.info(f"Language code type: {type(language_code)}")
+    logger.info(f"Language code length: {len(language_code)}")
+    logger.info(f"Supported languages: {list(SUPPORTED_LANGUAGES.keys())}")
+    logger.info(f"=====================================")
+    
     if language_code not in SUPPORTED_LANGUAGES:
         raise HTTPException(
             status_code=400,
@@ -228,20 +243,9 @@ async def transcribe_audio(
     # Generate file hash for caching
     file_hash = get_file_hash(file_content)
 
-    # Check cache first
-    cached_result = get_cached_transcript(file_hash, language_code)
-    if cached_result:
-        return TranscriptionResponse(
-            success=True,
-            transcript=cached_result["transcript"],
-            confidence=cached_result["confidence"],
-            language_code=language_code,
-            duration=cached_result["duration"],
-            word_count=cached_result["word_count"],
-            word_time_offsets=cached_result.get("word_time_offsets"),
-            cached=True,
-            audio_info=cached_result.get("audio_info")
-        )
+    # Skip cache for debugging - always process fresh
+    logger.info("Skipping cache - processing fresh transcription")
+    cached_result = None
 
     # Create temporary file
     temp_file_path = None
@@ -279,17 +283,63 @@ async def transcribe_audio(
         # Configure recognition using detected audio info
         logger.info(
             f"Configuring recognition with: encoding={audio_info['encoding']}, sample_rate={audio_info['sample_rate']}, language={language_code}")
+        logger.info(f"Supported language: {SUPPORTED_LANGUAGES.get(language_code, 'Unknown')}")
+        # Log which model will be used
+        if language_code == "gu-IN":
+            logger.info(f"Using enhanced default model for Gujarati")
+        else:
+            logger.info(f"Using default model for {SUPPORTED_LANGUAGES.get(language_code, 'other languages')}")
         audio = speech.RecognitionAudio(content=audio_content)
 
-        # Use basic model configuration for better compatibility with Indian languages
-        config = speech.RecognitionConfig(
-            encoding=audio_info['encoding'],
-            sample_rate_hertz=audio_info['sample_rate'],
-            language_code=language_code,
-            enable_automatic_punctuation=enable_automatic_punctuation,
-            enable_word_time_offsets=enable_word_time_offsets,
-            # Remove model and use_enhanced for better compatibility
-        )
+        # Configure recognition with appropriate model for Indian languages
+        # Use different models based on language support
+        if language_code == "gu-IN":
+            # For Gujarati, use enhanced model with use_enhanced=True
+            config = speech.RecognitionConfig(
+                encoding=audio_info['encoding'],
+                sample_rate_hertz=audio_info['sample_rate'],
+                language_code=language_code,
+                enable_automatic_punctuation=enable_automatic_punctuation,
+                enable_word_time_offsets=enable_word_time_offsets,
+                # Use enhanced model for Gujarati
+                use_enhanced=True,
+                model="default",
+                # Add alternative language codes for better recognition
+                alternative_language_codes=["en-IN"],
+                # Enable speech adaptation for better Indian language recognition
+                speech_contexts=[{
+                    "phrases": [],
+                    "boost": 20.0
+                }],
+                # Enable profanity filter
+                profanity_filter=False,
+                # Set max alternatives for better results
+                max_alternatives=1
+            )
+        else:
+            logger.info(f"Using default model for {SUPPORTED_LANGUAGES.get(language_code, 'other languages')}")
+            # For other languages, use default model (chirp_2 is not supported)
+            config = speech.RecognitionConfig(
+                encoding=audio_info['encoding'],
+                sample_rate_hertz=audio_info['sample_rate'],
+                language_code=language_code,
+                enable_automatic_punctuation=enable_automatic_punctuation,
+                enable_word_time_offsets=enable_word_time_offsets,
+                # Use default model for other languages
+                use_enhanced=True,
+                model="default",
+                # Add alternative language codes for better recognition
+                alternative_language_codes=["en-IN"] if language_code != "en-IN" else [],
+                # Enable speech adaptation for better Indian language recognition
+                speech_contexts=[{
+                    "phrases": [],
+                    "boost": 20.0
+                }],
+                # Enable profanity filter
+                profanity_filter=False,
+                # Set max alternatives for better results
+                max_alternatives=1
+            )
 
         # Perform recognition
         try:

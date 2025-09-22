@@ -481,7 +481,7 @@ export const ISLDictionary: React.FC = () => {
 
                                                 {/* Hover Overlay */}
                                                 {hoveredVideo === video.id && (
-                                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-50">
                                                         <div className="flex space-x-2 mb-2">
                                                             <Button
                                                                 onClick={() => handleVideoPlay(video.id)}

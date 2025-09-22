@@ -149,19 +149,46 @@ const AudioToISL: React.FC = () => {
             const languageData = await languageResponse.json()
             setDetectedLanguage(languageData.detected_language)
 
+            // Debug: Log the detected language
+            console.log('Language detection result:', languageData)
+
             // Map detected language to appropriate language code for transcription
             const getLanguageCode = (detectedLang: string): string => {
                 const lang = detectedLang.toLowerCase()
-                if (lang.includes('hindi') || lang.includes('हिंदी')) return 'hi-IN'
-                if (lang.includes('marathi') || lang.includes('मराठी')) return 'mr-IN'
-                if (lang.includes('gujarati') || lang.includes('ગુજરાતી')) return 'gu-IN'
-                if (lang.includes('english') || lang.includes('अंग्रेजी')) return 'en-IN'
+                console.log('Processing detected language:', detectedLang, '-> lowercase:', lang)
+                
+                // Check for Hindi (English and Devanagari)
+                if (lang.includes('hindi') || lang.includes('हिंदी')) {
+                    console.log('Matched Hindi')
+                    return 'hi-IN'
+                }
+                // Check for Marathi (English and Devanagari)
+                if (lang.includes('marathi') || lang.includes('मराठी')) {
+                    console.log('Matched Marathi')
+                    return 'mr-IN'
+                }
+                // Check for Gujarati (English, Devanagari, and Gujarati script)
+                if (lang.includes('gujarati') || lang.includes('ગુજરાતી') || lang.includes('गुजराती')) {
+                    console.log('Matched Gujarati')
+                    return 'gu-IN'
+                }
+                // Check for English (English and Devanagari)
+                if (lang.includes('english') || lang.includes('अंग्रेजी')) {
+                    console.log('Matched English')
+                    return 'en-IN'
+                }
                 // Default to English if language not recognized
+                console.log('No match found, defaulting to English')
                 return 'en-IN'
             }
 
             // Step 3: Transcribe audio
             const languageCode = getLanguageCode(languageData.detected_language)
+            
+            // Debug: Log the final language code being sent
+            console.log('Final language code being sent to transcription:', languageCode)
+            console.log('Detected language from API:', languageData.detected_language)
+            
             setProcessingStep({
                 step: 'transcribing',
                 message: `Transcribing audio to text in ${languageData.detected_language}...`,
@@ -171,6 +198,12 @@ const AudioToISL: React.FC = () => {
             const transcribeFormData = new FormData()
             transcribeFormData.append('file', file)
             transcribeFormData.append('language_code', languageCode)
+            
+            // Debug: Log what's being sent in FormData
+            console.log('FormData contents:')
+            for (const [key, value] of transcribeFormData.entries()) {
+                console.log(`${key}:`, value)
+            }
 
             const transcribeResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/audio-translation/transcribe`, {
                 method: 'POST',
@@ -194,6 +227,13 @@ const AudioToISL: React.FC = () => {
             // Use actual translation service
             // Extract source language code for translation (e.g., 'mr' from 'mr-IN')
             const sourceLanguageCode = languageCode.split('-')[0]
+            
+            // Debug logging
+            console.log('Language detection debug:', {
+                detectedLanguage: languageData.detected_language,
+                languageCode: languageCode,
+                sourceLanguageCode: sourceLanguageCode
+            })
 
             // Define target languages (exclude source language to avoid self-translation)
             const allTargetLanguages = ['en', 'hi', 'mr', 'gu']
@@ -201,6 +241,14 @@ const AudioToISL: React.FC = () => {
 
             // If source language is not in our supported list, default to English
             const finalSourceLanguage = allTargetLanguages.includes(sourceLanguageCode) ? sourceLanguageCode : 'en'
+            
+            // Debug logging for translation
+            console.log('Translation debug:', {
+                sourceLanguageCode,
+                finalSourceLanguage,
+                targetLanguages,
+                allTargetLanguages
+            })
 
             const translationResult = await translationService.translateText(
                 transcribeData.transcript,
