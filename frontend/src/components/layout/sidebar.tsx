@@ -99,13 +99,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
     return (
         <div className="w-72 bg-white border-r border-gray-200">
             {/* Sidebar Header */}
-            <div className="p-4 border-b border-gray-200">
+            <div className="p-4">
                 <div className="flex items-center space-x-2">
                     <div className="w-8 h-8 flex items-center justify-center" style={{ backgroundColor: 'oklch(50% 0.134 242.749)' }}>
                         <div className="w-4 h-4 bg-white"></div>
                     </div>
                     <div className="flex flex-col">
                         <span className="text-lg font-semibold text-gray-900">SignVerse</span>
+                        <span className="text-xs text-gray-500">Western Railway</span>
                         <span className="text-xs text-gray-500">ISL Announcement System</span>
                     </div>
                 </div>
