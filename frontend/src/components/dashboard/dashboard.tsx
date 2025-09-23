@@ -26,9 +26,10 @@ export const Dashboard: React.FC = () => {
     const [supportedModels, setSupportedModels] = useState<string[]>([])
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedTrainForGeneration, setSelectedTrainForGeneration] = useState<TrainInfo | null>(null)
-    const [selectedModel, setSelectedModel] = useState<string>('female')
+    const [selectedModel, setSelectedModel] = useState<string>('male')
     const [isSignsInfoModalOpen, setIsSignsInfoModalOpen] = useState(false)
     const [selectedTrainForSignsInfo, setSelectedTrainForSignsInfo] = useState<TrainInfo | null>(null)
+    const [playbackSpeeds, setPlaybackSpeeds] = useState<Record<number, number>>({})
 
     // Fetch announcement categories and supported models on component mount
     useEffect(() => {
@@ -83,7 +84,7 @@ export const Dashboard: React.FC = () => {
                 ...train,
                 platform: 1,
                 announcementCategory: 'Arriving',
-                model: 'female' // Default model
+                model: 'male' // Default model
             }))
             setSearchResults(resultsWithDefaults)
         } catch (error) {
@@ -131,14 +132,14 @@ export const Dashboard: React.FC = () => {
 
     const handleOpenModal = (train: TrainInfo) => {
         setSelectedTrainForGeneration(train)
-        setSelectedModel(train.model || 'female')
+        setSelectedModel(train.model || 'male')
         setIsModalOpen(true)
     }
 
     const handleCloseModal = () => {
         setIsModalOpen(false)
         setSelectedTrainForGeneration(null)
-        setSelectedModel('female')
+        setSelectedModel('male')
     }
 
     const handleOpenSignsInfoModal = (train: TrainInfo) => {
@@ -152,9 +153,56 @@ export const Dashboard: React.FC = () => {
     }
 
     const handlePlaybackSpeedChange = (speed: number, trainId: number) => {
+        console.log(`Setting playback speed to ${speed}x for train ID: ${trainId}`)
+        
+        // Update state
+        setPlaybackSpeeds(prev => ({
+            ...prev,
+            [trainId]: speed
+        }))
+        
+        // Find and update the video element
         const videoElement = document.querySelector(`video[data-train-id="${trainId}"]`) as HTMLVideoElement
+        
         if (videoElement) {
+            console.log(`Found video element, setting playback rate to ${speed}`)
+            
+            // Store current time if video is playing
+            const currentTime = videoElement.currentTime
+            const wasPlaying = !videoElement.paused
+            
+            // Set the new playback rate
             videoElement.playbackRate = speed
+            
+            // If the video was playing, restart it at the current position
+            if (wasPlaying) {
+                videoElement.currentTime = currentTime
+                videoElement.play().catch(error => {
+                    console.log('Video play failed (user interaction may be required):', error)
+                })
+            }
+        } else {
+            console.error(`Video element not found for train ID: ${trainId}`)
+            // Try alternative selector
+            const allVideos = document.querySelectorAll('video')
+            for (const video of allVideos) {
+                if (video.getAttribute('data-train-id') === trainId.toString()) {
+                    const currentTime = video.currentTime
+                    const wasPlaying = !video.paused
+                    
+                    (video as HTMLVideoElement).playbackRate = speed
+                    
+                    if (wasPlaying) {
+                        video.currentTime = currentTime
+                        video.play().catch(error => {
+                            console.log('Video play failed (user interaction may be required):', error)
+                        })
+                    }
+                    
+                    console.log(`Found video element with alternative method, setting playback rate to ${speed}`)
+                    break
+                }
+            }
         }
     }
 
@@ -202,6 +250,12 @@ export const Dashboard: React.FC = () => {
                         : t
                 )
             )
+
+            // Initialize playback speed for this train
+            setPlaybackSpeeds(prev => ({
+                ...prev,
+                [selectedTrainForGeneration.id]: 1
+            }))
 
         } catch (error) {
             console.error('Error generating announcement:', error)
@@ -496,19 +550,23 @@ export const Dashboard: React.FC = () => {
                                                                                     Playback Speed
                                                                                 </label>
                                                                                 <div className="flex gap-2 flex-wrap">
-                                                                                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
-                                                                                        <button
-                                                                                            key={speed}
-                                                                                            onClick={() => handlePlaybackSpeedChange(speed, train.id)}
-                                                                                            className={`px-3 py-1 text-sm border rounded hover:bg-gray-50 ${
-                                                                                                speed === 1 
-                                                                                                    ? 'bg-blue-100 border-blue-300 text-blue-700' 
-                                                                                                    : 'bg-white border-gray-300 text-gray-700'
-                                                                                            }`}
-                                                                                        >
-                                                                                            {speed}x
-                                                                                        </button>
-                                                                                    ))}
+                                                                                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => {
+                                                                                        const currentSpeed = playbackSpeeds[train.id] || 1
+                                                                                        const isActive = speed === currentSpeed
+                                                                                        return (
+                                                                                            <button
+                                                                                                key={speed}
+                                                                                                onClick={() => handlePlaybackSpeedChange(speed, train.id)}
+                                                                                                className={`px-3 py-1 text-sm border rounded hover:bg-gray-50 transition-colors ${
+                                                                                                    isActive
+                                                                                                        ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                                                                                                        : 'bg-white border-gray-300 text-gray-700'
+                                                                                                }`}
+                                                                                            >
+                                                                                                {speed}x
+                                                                                            </button>
+                                                                                        )
+                                                                                    })}
                                                                                 </div>
                                                                             </div>
                                                                         </div>

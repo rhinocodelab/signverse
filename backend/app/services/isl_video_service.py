@@ -40,10 +40,7 @@ class ISLVideoService:
             query = query.where(ISLVideoModel.model_type ==
                                 search_params.model_type)
 
-        # Filter by active status
-        if search_params.is_active is not None:
-            query = query.where(ISLVideoModel.is_active ==
-                                search_params.is_active)
+        # All videos are considered active (no inactive filtering)
 
         # Search by text
         if search_params.search_text:
@@ -118,8 +115,7 @@ class ISLVideoService:
                 and_(
                     ISLVideoModel.filename == filename,
                     ISLVideoModel.model_type == model_type,
-                    ISLVideoModel.file_size == file_size,
-                    ISLVideoModel.is_active == True
+                    ISLVideoModel.file_size == file_size
                 )
             )
         )
@@ -131,8 +127,7 @@ class ISLVideoService:
             select(ISLVideoModel).where(
                 and_(
                     ISLVideoModel.display_name == display_name,
-                    ISLVideoModel.model_type == model_type,
-                    ISLVideoModel.is_active == True
+                    ISLVideoModel.model_type == model_type
                 )
             )
         )
@@ -158,14 +153,9 @@ class ISLVideoService:
         )
         female_videos = female_result.scalar()
 
-        # Active videos
-        active_result = await self.db.execute(
-            select(func.count(ISLVideoModel.id)).where(
-                ISLVideoModel.is_active == True)
-        )
-        active_videos = active_result.scalar()
-
-        inactive_videos = total_videos - active_videos
+        # All videos are considered active (no inactive tracking)
+        active_videos = total_videos
+        inactive_videos = 0
 
         # Get total file size
         total_size_result = await self.db.execute(select(func.sum(ISLVideoModel.file_size)))
@@ -195,10 +185,7 @@ class ISLVideoService:
         """Get all videos by model type"""
         result = await self.db.execute(
             select(ISLVideoModel).where(
-                and_(
-                    ISLVideoModel.model_type == model_type,
-                    ISLVideoModel.is_active == True
-                )
+                ISLVideoModel.model_type == model_type
             ).order_by(ISLVideoModel.created_at.desc())
         )
         return result.scalars().all()

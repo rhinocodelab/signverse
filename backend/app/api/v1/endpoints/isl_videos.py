@@ -256,8 +256,7 @@ async def upload_isl_video(
             mime_type="video/mp4",
             file_extension="mp4",
             description=description,
-            tags=tags,
-            is_active=True
+            tags=tags
         )
         db_video = await video_service.update_isl_video(existing_video.id, update_data)
 
@@ -285,8 +284,7 @@ async def upload_isl_video(
             mime_type="video/mp4",
             file_extension="mp4",
             description=description,
-            tags=tags,
-            is_active=True
+            tags=tags
         )
         db_video = await video_service.create_isl_video(video_data)
 
@@ -324,7 +322,6 @@ async def get_isl_videos(
         search_params = ISLVideoSearch(
             model_type=model_type,
             search_text=search,
-            is_active=True,
             limit=limit,
             offset=(page - 1) * limit
         )
@@ -338,7 +335,6 @@ async def get_isl_videos(
         total_search_params = ISLVideoSearch(
             model_type=model_type,
             search_text=search,
-            is_active=True,
             limit=100,  # Use maximum allowed limit
             offset=0
         )
@@ -573,16 +569,10 @@ async def sync_isl_videos(
                 print(f"🔍 Sync Debug - Processing folder: {folder_name}")
                 print(f"🔍 Sync Debug - Video path: {video_path}")
 
-                # Check if video already exists in database
-                result = await db.execute(
-                    select(ISLVideoModel).where(
-                        and_(
-                            ISLVideoModel.video_path == video_path,
-                            ISLVideoModel.model_type == model_type
-                        )
-                    )
-                )
-                existing_video = result.scalar_one_or_none()
+                # Check if video already exists in database using proper duplicate check
+                filename = f"{folder_name}.mp4"
+                file_size = os.path.getsize(video_path)
+                existing_video = await video_service.check_duplicate_video(filename, model_type, file_size)
 
                 print(
                     f"🔍 Sync Debug - Existing video found: {existing_video is not None}")
@@ -595,16 +585,13 @@ async def sync_isl_videos(
                         f"⏭️ Sync Debug - Skipping {folder_name} (already exists)")
                     continue
 
-                # Get file info
-                file_size = os.path.getsize(video_path)
-                filename = f"{folder_name}.mp4"
+                # File info already retrieved above
 
                 # Create or update video record
                 if existing_video:
                     # Update existing record
                     update_data = ISLVideoUpdate(
-                        file_size=file_size,
-                        is_active=True
+                        file_size=file_size
                     )
                     await video_service.update_isl_video(existing_video.id, update_data)
                     video_id = existing_video.id
@@ -617,8 +604,7 @@ async def sync_isl_videos(
                         file_size=file_size,
                         model_type=model_type,
                         mime_type="video/mp4",
-                        file_extension="mp4",
-                        is_active=True
+                        file_extension="mp4"
                     )
                     new_video = await video_service.create_isl_video(video_data)
                     video_id = new_video.id
