@@ -304,8 +304,8 @@ export const Dashboard: React.FC = () => {
             <div className="max-w-7xl mx-auto">
                 <div className="space-y-6">
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-                        <p className="text-gray-600">Welcome to your SignVerse dashboard</p>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Generate ISL Announcement</h1>
+                        <p className="text-gray-600">Search for trains and generate ISL announcements</p>
                     </div>
 
                     {/* Train Search Section */}

@@ -17,6 +17,7 @@ export const ContentArea: React.FC<ContentAreaProps> = ({ activeMenu }) => {
     const renderContent = () => {
         switch (activeMenu) {
             case 'dashboard':
+            case 'dashboard-main':
                 return <Dashboard />
 
             case 'route-management':

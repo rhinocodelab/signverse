@@ -12,6 +12,7 @@ export const DashboardHeader: React.FC = () => {
     const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
+
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

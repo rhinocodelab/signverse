@@ -6,7 +6,7 @@ import { DashboardHeader } from './dashboard-header'
 import { ContentArea } from './content-area'
 
 export const DashboardLayout: React.FC = () => {
-    const [activeMenu, setActiveMenu] = useState('dashboard')
+    const [activeMenu, setActiveMenu] = useState('dashboard-main')
 
     const handleMenuChange = (menuId: string) => {
         setActiveMenu(menuId)

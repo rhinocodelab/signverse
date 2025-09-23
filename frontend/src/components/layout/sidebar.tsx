@@ -13,7 +13,9 @@ import {
     Megaphone,
     Mic,
     BookOpen,
-    FileText
+    FileText,
+    Radio,
+    Zap
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -33,9 +35,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMenu, onMenuChange }) =>
 
     const menuItems: MenuItem[] = [
         {
-            id: 'dashboard',
-            label: 'Dashboard',
-            icon: BarChart3
+            id: 'dashboard-main',
+            label: 'Generate Announcement',
+            icon: Zap
+        },
+        {
+            id: 'live-announcements',
+            label: 'Live Announcements',
+            icon: Radio
         },
         {
             id: 'route-management',
