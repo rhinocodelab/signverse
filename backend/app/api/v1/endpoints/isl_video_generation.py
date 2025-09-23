@@ -552,3 +552,36 @@ async def health_check():
             "status": "error",
             "message": f"Service unhealthy: {str(e)}"
         }
+
+
+@router.delete("/cleanup-temp-videos")
+async def cleanup_temp_videos():
+    """
+    Delete all temporary ISL videos from the temp directory
+    """
+    try:
+        if not TEMP_VIDEOS_DIR.exists():
+            logger.warning(f"Temp videos directory does not exist: {TEMP_VIDEOS_DIR}")
+            return {"message": "Temp videos directory does not exist", "deleted_count": 0}
+        
+        deleted_count = 0
+        for video_file in TEMP_VIDEOS_DIR.glob("*.mp4"):
+            try:
+                video_file.unlink()  # Delete the file
+                deleted_count += 1
+                logger.info(f"Deleted temp video: {video_file.name}")
+            except Exception as e:
+                logger.error(f"Failed to delete {video_file.name}: {str(e)}")
+        
+        logger.info(f"Cleanup completed. Deleted {deleted_count} temp videos")
+        return {
+            "message": f"Successfully deleted {deleted_count} temporary videos",
+            "deleted_count": deleted_count
+        }
+        
+    except Exception as e:
+        logger.error(f"Error during temp videos cleanup: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to cleanup temp videos: {str(e)}"
+        )

@@ -1,4 +1,6 @@
 import { AuthResponse, LoginRequest } from '@/types/auth'
+import { TrainRoute } from '@/types/train-route'
+import { TrainAnnouncementRequest, TrainAnnouncementResponse } from '@/types/train-announcement'
 import toast from 'react-hot-toast'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1'
@@ -103,6 +105,58 @@ class ApiService {
             throw new Error('Health check failed - no response received')
         }
         return result
+    }
+
+    // Train routes endpoints
+    async searchTrainRoutes(query: string, limit: number = 10): Promise<TrainRoute[]> {
+        const result = await this.request<TrainRoute[]>(`/train-routes/search?q=${encodeURIComponent(query)}&limit=${limit}`)
+        if (!result) {
+            throw new Error('Failed to search train routes')
+        }
+        return result
+    }
+
+    // Announcement template endpoints
+    async getAnnouncementCategories(): Promise<string[]> {
+        const result = await this.request<{ categories: string[] }>('/announcement-templates/categories/list')
+        if (!result) {
+            throw new Error('Failed to fetch announcement categories')
+        }
+        return result.categories
+    }
+
+    // Train announcement endpoints
+    async generateTrainAnnouncement(request: TrainAnnouncementRequest): Promise<TrainAnnouncementResponse> {
+        const result = await this.request<TrainAnnouncementResponse>('/train-announcements/generate', {
+            method: 'POST',
+            body: JSON.stringify(request)
+        })
+        if (!result) {
+            throw new Error('Failed to generate train announcement')
+        }
+        return result
+    }
+
+    async getTrainAnnouncementCategories(): Promise<string[]> {
+        const result = await this.request<{ categories: string[] }>('/train-announcements/categories')
+        if (!result) {
+            throw new Error('Failed to fetch train announcement categories')
+        }
+        return result.categories
+    }
+
+    async getSupportedModels(): Promise<string[]> {
+        const result = await this.request<{ supported_models: string[] }>('/train-announcements/supported-models')
+        if (!result) {
+            throw new Error('Failed to fetch supported models')
+        }
+        return result.supported_models
+    }
+
+    async deleteAllTempVideos(): Promise<void> {
+        await this.request<void>('/isl-video-generation/cleanup-temp-videos', {
+            method: 'DELETE'
+        })
     }
 }
 

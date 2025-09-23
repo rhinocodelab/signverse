@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, or_
 from typing import List, Optional
 from app.db.database import get_db
 from app.models.train_route import TrainRoute
@@ -53,6 +53,27 @@ async def get_train_routes(
         query = query.where(TrainRoute.train_number == train_number)
 
     query = query.offset(skip).limit(limit).order_by(TrainRoute.train_number)
+
+    result = await db.execute(query)
+    train_routes = result.scalars().all()
+
+    return train_routes
+
+
+@router.get("/search", response_model=List[TrainRouteResponse])
+async def search_train_routes(
+    q: str = Query(..., min_length=1, description="Search query for train number or name"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of results to return"),
+    db: AsyncSession = Depends(get_db)
+) -> List[TrainRouteResponse]:
+    """Search train routes by train number or train name"""
+    # Create search query that matches either train number or train name
+    query = select(TrainRoute).where(
+        or_(
+            TrainRoute.train_number.ilike(f"%{q}%"),
+            TrainRoute.train_name.ilike(f"%{q}%")
+        )
+    ).limit(limit).order_by(TrainRoute.train_number)
 
     result = await db.execute(query)
     train_routes = result.scalars().all()

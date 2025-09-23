@@ -1,0 +1,689 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Search, Train, MapPin, Clock, X, Info } from 'lucide-react'
+import { apiService } from '@/services/api'
+import { islVideoGenerationService } from '@/services/isl-video-generation-service'
+import { TrainRoute } from '@/types/train-route'
+import { TrainAnnouncementRequest, TrainAnnouncementResponse } from '@/types/train-announcement'
+
+interface TrainInfo extends TrainRoute {
+    platform?: number
+    announcementCategory?: string
+    model?: string
+    generatedAnnouncement?: TrainAnnouncementResponse
+    isGenerating?: boolean
+}
+
+
+
+export const Dashboard: React.FC = () => {
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState<TrainInfo[]>([])
+    const [isSearching, setIsSearching] = useState(false)
+    const [announcementCategories, setAnnouncementCategories] = useState<string[]>([])
+    const [isLoadingCategories, setIsLoadingCategories] = useState(true)
+    const [supportedModels, setSupportedModels] = useState<string[]>([])
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [selectedTrainForGeneration, setSelectedTrainForGeneration] = useState<TrainInfo | null>(null)
+    const [selectedModel, setSelectedModel] = useState<string>('female')
+    const [isSignsInfoModalOpen, setIsSignsInfoModalOpen] = useState(false)
+    const [selectedTrainForSignsInfo, setSelectedTrainForSignsInfo] = useState<TrainInfo | null>(null)
+
+    // Fetch announcement categories and supported models on component mount
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch categories
+                const categories = await apiService.getAnnouncementCategories()
+                setAnnouncementCategories(categories)
+            } catch (error) {
+                console.error('Error fetching announcement categories:', error)
+                // Fallback to default categories if API fails
+                setAnnouncementCategories([
+                    'Arrival',
+                    'Departure',
+                    'Delay',
+                    'Cancellation',
+                    'Platform Change',
+                    'General Announcement'
+                ])
+            } finally {
+                setIsLoadingCategories(false)
+            }
+
+            try {
+                // Fetch supported models
+                const models = await apiService.getSupportedModels()
+                setSupportedModels(models)
+            } catch (error) {
+                console.error('Error fetching supported models:', error)
+                // Fallback to default models
+                setSupportedModels(['male', 'female'])
+            } finally {
+                // Models loaded
+            }
+        }
+
+        fetchData()
+    }, [])
+
+    const handleSearch = async () => {
+        if (!searchQuery.trim()) {
+            setSearchResults([])
+            return
+        }
+
+        setIsSearching(true)
+        
+        try {
+            const results = await apiService.searchTrainRoutes(searchQuery, 10)
+            // Set default values for each train result
+            const resultsWithDefaults = results.map(train => ({
+                ...train,
+                platform: 1,
+                announcementCategory: 'Arriving',
+                model: 'female' // Default model
+            }))
+            setSearchResults(resultsWithDefaults)
+        } catch (error) {
+            console.error('Error searching trains:', error)
+            setSearchResults([])
+        } finally {
+            setIsSearching(false)
+        }
+    }
+
+    const handleClear = async () => {
+        try {
+            // Clear the search state
+            setSearchQuery('')
+            setSearchResults([])
+            
+            // Delete all ISL videos from temp directory
+            await apiService.deleteAllTempVideos()
+        } catch (error) {
+            console.error('Error clearing videos:', error)
+            // Still clear the search even if video deletion fails
+        }
+    }
+
+    const handlePlatformChangeForTrain = (train: TrainInfo, platform: number) => {
+        setSearchResults(prevResults => 
+            prevResults.map(t => 
+                t.train_number === train.train_number 
+                    ? { ...t, platform }
+                    : t
+            )
+        )
+    }
+
+    const handleCategoryChangeForTrain = (train: TrainInfo, category: string) => {
+        setSearchResults(prevResults => 
+            prevResults.map(t => 
+                t.train_number === train.train_number 
+                    ? { ...t, announcementCategory: category }
+                    : t
+            )
+        )
+    }
+
+
+    const handleOpenModal = (train: TrainInfo) => {
+        setSelectedTrainForGeneration(train)
+        setSelectedModel(train.model || 'female')
+        setIsModalOpen(true)
+    }
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false)
+        setSelectedTrainForGeneration(null)
+        setSelectedModel('female')
+    }
+
+    const handleOpenSignsInfoModal = (train: TrainInfo) => {
+        setSelectedTrainForSignsInfo(train)
+        setIsSignsInfoModalOpen(true)
+    }
+
+    const handleCloseSignsInfoModal = () => {
+        setIsSignsInfoModalOpen(false)
+        setSelectedTrainForSignsInfo(null)
+    }
+
+    const handlePlaybackSpeedChange = (speed: number, trainId: number) => {
+        const videoElement = document.querySelector(`video[data-train-id="${trainId}"]`) as HTMLVideoElement
+        if (videoElement) {
+            videoElement.playbackRate = speed
+        }
+    }
+
+    const handleGenerateAnnouncement = async () => {
+        if (!selectedTrainForGeneration || !selectedTrainForGeneration.announcementCategory) {
+            console.error('Train and category are required')
+            return
+        }
+
+        // Close modal first
+        handleCloseModal()
+
+        // Set generating state
+        setSearchResults(prevResults => 
+            prevResults.map(t => 
+                t.train_number === selectedTrainForGeneration.train_number 
+                    ? { ...t, isGenerating: true }
+                    : t
+            )
+        )
+
+        try {
+            const request: TrainAnnouncementRequest = {
+                train_number: selectedTrainForGeneration.train_number,
+                train_name: selectedTrainForGeneration.train_name,
+                from_station_name: selectedTrainForGeneration.from_station_name,
+                to_station_name: selectedTrainForGeneration.to_station_name,
+                platform: selectedTrainForGeneration.platform || 1,
+                announcement_category: selectedTrainForGeneration.announcementCategory,
+                model: selectedModel,
+                user_id: 1 // TODO: Get from auth context
+            }
+
+            const response = await apiService.generateTrainAnnouncement(request)
+            
+            // Update train with generated announcement
+            setSearchResults(prevResults => 
+                prevResults.map(t => 
+                    t.train_number === selectedTrainForGeneration.train_number 
+                        ? { 
+                            ...t, 
+                            generatedAnnouncement: response,
+                            isGenerating: false 
+                        }
+                        : t
+                )
+            )
+
+        } catch (error) {
+            console.error('Error generating announcement:', error)
+            
+            // Set error state
+            setSearchResults(prevResults => 
+                prevResults.map(t => 
+                    t.train_number === selectedTrainForGeneration.train_number 
+                        ? { 
+                            ...t, 
+                            generatedAnnouncement: {
+                                success: false,
+                                error: error instanceof Error ? error.message : 'Unknown error'
+                            },
+                            isGenerating: false 
+                        }
+                        : t
+                )
+            )
+        }
+    }
+
+    const validateTrainNumber = (value: string) => {
+        // Allow only digits and limit to 5 characters for train number search
+        // But also allow text for train name search
+        if (/^\d+$/.test(value)) {
+            return value.slice(0, 5)
+        }
+        return value
+    }
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value
+        const validatedValue = validateTrainNumber(value)
+        setSearchQuery(validatedValue)
+    }
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            handleSearch()
+        }
+    }
+
+    return (
+        <div className="p-6">
+            <div className="max-w-7xl mx-auto">
+                <div className="space-y-6">
+                    <div className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+                        <p className="text-gray-600">Welcome to your SignVerse dashboard</p>
+                    </div>
+
+                    {/* Train Search Section */}
+                    <div className="bg-white p-6 border border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-900 mb-4">Search Train</h2>
+                        
+                        <div className="flex gap-4 mb-4">
+                            <div className="flex-1">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={handleInputChange}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Enter train number or train name"
+                                        className="w-full pl-10 pr-4 py-3 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleSearch}
+                                disabled={isSearching}
+                                className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {isSearching ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        Searching...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Search className="w-4 h-4" />
+                                        Search
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleClear}
+                                disabled={isSearching}
+                                className="px-6 py-3 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                <X className="w-4 h-4" />
+                                Clear
+                            </button>
+                        </div>
+
+                        {/* Search Results */}
+                        {searchResults.length > 0 && (
+                            <div className="mb-6">
+                                <h3 className="text-lg font-medium text-gray-900 mb-3">Search Results</h3>
+                                <div className="space-y-6">
+                                    {searchResults.map((train, index) => (
+                                        <div key={index} className="bg-gray-50 p-6 border border-gray-200">
+                                            <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                                                {train.train_number} - {train.train_name}
+                                            </h4>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {/* Train Details */}
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <Train className="w-5 h-5 text-blue-600" />
+                                                        <div>
+                                                            <div className="text-sm text-gray-600">Train Number</div>
+                                                            <div className="font-semibold text-gray-900">{train.train_number}</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-5 h-5 flex items-center justify-center">
+                                                            <span className="text-blue-600 font-bold">T</span>
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-sm text-gray-600">Train Name</div>
+                                                            <div className="font-semibold text-gray-900">{train.train_name}</div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-3">
+                                                        <MapPin className="w-5 h-5 text-green-600" />
+                                                        <div>
+                                                            <div className="text-sm text-gray-600">Route</div>
+                                                            <div className="font-semibold text-gray-900">
+                                                                {train.from_station_name} → {train.to_station_name}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Configuration Options */}
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Platform
+                                                        </label>
+                                                        <select
+                                                            value={train.platform || 1}
+                                                            onChange={(e) => handlePlatformChangeForTrain(train, parseInt(e.target.value))}
+                                                            className="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        >
+                                                            {Array.from({ length: 20 }, (_, i) => i + 1).map(platform => (
+                                                                <option key={platform} value={platform}>
+                                                                    Platform {platform}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Announcement Category
+                                                        </label>
+                                                        <select
+                                                            value={train.announcementCategory || 'Arriving'}
+                                                            onChange={(e) => handleCategoryChangeForTrain(train, e.target.value)}
+                                                            disabled={isLoadingCategories}
+                                                            className="w-full p-3 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            {isLoadingCategories ? (
+                                                                <option value="Arriving">Loading categories...</option>
+                                                            ) : (
+                                                                announcementCategories.map(category => (
+                                                                    <option key={category} value={category}>
+                                                                        {category}
+                                                                    </option>
+                                                                ))
+                                                            )}
+                                                        </select>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="mt-6 flex gap-3">
+                                                <button 
+                                                    onClick={() => handleOpenModal(train)}
+                                                    disabled={train.isGenerating || !train.announcementCategory}
+                                                    className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                >
+                                                    {train.isGenerating ? (
+                                                        <>
+                                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                            Generating...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Clock className="w-4 h-4" />
+                                                            Generate Announcement
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+
+                                            {/* Generated Announcement Results */}
+                                            {train.generatedAnnouncement && (
+                                                <div className="mt-6 p-4 border border-gray-200 bg-gray-50">
+                                                    <h5 className="text-lg font-semibold text-gray-900 mb-3">Generated Announcement</h5>
+                                                    
+                                                    {train.generatedAnnouncement.success ? (
+                                                        <>
+                                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                                                {/* Left Panel - Multi-language Text */}
+                                                                <div className="space-y-4">
+                                                                    <h6 className="text-md font-medium text-gray-800 mb-3">Announcement Text</h6>
+                                                                    
+                                                                    {/* English */}
+                                                                    <div>
+                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                            English
+                                                                        </label>
+                                                                        <p className="text-sm text-gray-900 bg-white p-3 border min-h-[60px]">
+                                                                            {train.generatedAnnouncement.generated_text}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {/* Hindi */}
+                                                                    <div>
+                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                            Hindi (हिंदी)
+                                                                        </label>
+                                                                        <p className="text-sm text-gray-900 bg-white p-3 border min-h-[60px]">
+                                                                            {train.generatedAnnouncement.generated_text_hindi || train.generatedAnnouncement.generated_text}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {/* Marathi */}
+                                                                    <div>
+                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                            Marathi (मराठी)
+                                                                        </label>
+                                                                        <p className="text-sm text-gray-900 bg-white p-3 border min-h-[60px]">
+                                                                            {train.generatedAnnouncement.generated_text_marathi || train.generatedAnnouncement.generated_text}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    {/* Gujarati */}
+                                                                    <div>
+                                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                            Gujarati (ગુજરાતી)
+                                                                        </label>
+                                                                        <p className="text-sm text-gray-900 bg-white p-3 border min-h-[60px]">
+                                                                            {train.generatedAnnouncement.generated_text_gujarati || train.generatedAnnouncement.generated_text}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Right Panel - ISL Video */}
+                                                                <div className="space-y-4">
+                                                                    {train.generatedAnnouncement.preview_url && (
+                                                                        <div>
+                                                                            <div className="flex items-center justify-between mb-2">
+                                                                                <label className="block text-sm font-medium text-gray-700">
+                                                                                    ISL Video
+                                                                                </label>
+                                                                                <button
+                                                                                    onClick={() => handleOpenSignsInfoModal(train)}
+                                                                                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                                                                                    title="View signs information"
+                                                                                >
+                                                                                    <Info className="w-4 h-4" />
+                                                                                </button>
+                                                                            </div>
+                                                                            <div className="bg-black rounded-lg overflow-hidden">
+                                                                                <video 
+                                                                                    controls 
+                                                                                    className="w-full h-64 object-contain"
+                                                                                    data-train-id={train.id}
+                                                                                    src={train.generatedAnnouncement.temp_video_id ? 
+                                                                                        islVideoGenerationService.getPreviewVideoUrl(train.generatedAnnouncement.temp_video_id) : 
+                                                                                        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${train.generatedAnnouncement.preview_url}`
+                                                                                    }
+                                                                                >
+                                                                                    Your browser does not support the video tag.
+                                                                                </video>
+                                                                            </div>
+                                                                            
+                                                                            {/* Playback Speed Controls */}
+                                                                            <div className="mt-3">
+                                                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                                    Playback Speed
+                                                                                </label>
+                                                                                <div className="flex gap-2 flex-wrap">
+                                                                                    {[0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                                                                                        <button
+                                                                                            key={speed}
+                                                                                            onClick={() => handlePlaybackSpeedChange(speed, train.id)}
+                                                                                            className={`px-3 py-1 text-sm border rounded hover:bg-gray-50 ${
+                                                                                                speed === 1 
+                                                                                                    ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                                                                                                    : 'bg-white border-gray-300 text-gray-700'
+                                                                                            }`}
+                                                                                        >
+                                                                                            {speed}x
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-red-600">
+                                                            <p className="font-medium">Generation Failed</p>
+                                                            <p className="text-sm">{train.generatedAnnouncement.error}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* No Results Message */}
+                        {searchQuery && searchResults.length === 0 && !isSearching && (
+                            <div className="text-center py-8">
+                                <Train className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                <p className="text-gray-600">No trains found matching your search</p>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Try searching with a different train number or name
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Model Selection Modal */}
+            {isModalOpen && selectedTrainForGeneration && (
+                <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
+                    <div className="bg-white p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                            Select AI Model for Announcement
+                        </h3>
+                        
+                        <div className="mb-6">
+                            <p className="text-sm text-gray-600 mb-2">
+                                <strong>Train:</strong> {selectedTrainForGeneration.train_number} - {selectedTrainForGeneration.train_name}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-2">
+                                <strong>Route:</strong> {selectedTrainForGeneration.from_station_name} → {selectedTrainForGeneration.to_station_name}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-2">
+                                <strong>Platform:</strong> {selectedTrainForGeneration.platform}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                <strong>Category:</strong> {selectedTrainForGeneration.announcementCategory}
+                            </p>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-3">
+                                Choose AI Model
+                            </label>
+                            <div className="space-y-3">
+                                {supportedModels.map(model => (
+                                    <label key={model} className="flex items-center space-x-3 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="model"
+                                            value={model}
+                                            checked={selectedModel === model}
+                                            onChange={(e) => setSelectedModel(e.target.value)}
+                                            className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                        />
+                                        <div className="flex items-center space-x-2">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                                                model === 'male' ? 'bg-blue-600' : 'bg-pink-600'
+                                            }`}>
+                                                {model === 'male' ? 'M' : 'F'}
+                                            </div>
+                                            <span className="text-sm font-medium text-gray-900">
+                                                {model.charAt(0).toUpperCase() + model.slice(1)} Model
+                                            </span>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 justify-end">
+                            <button
+                                onClick={handleCloseModal}
+                                className="px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleGenerateAnnouncement}
+                                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
+                            >
+                                <Clock className="w-4 h-4" />
+                                Generate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Signs Information Modal */}
+            {isSignsInfoModalOpen && selectedTrainForSignsInfo && selectedTrainForSignsInfo.generatedAnnouncement && (
+                <div className="fixed inset-0 bg-transparent flex items-center justify-center z-50">
+                    <div className="bg-white p-6 max-w-lg w-full mx-4 shadow-2xl border border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Signs Information
+                            </h3>
+                            <button
+                                onClick={handleCloseSignsInfoModal}
+                                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                    Train: {selectedTrainForSignsInfo.train_number} - {selectedTrainForSignsInfo.train_name}
+                                </h4>
+                            </div>
+
+                            {selectedTrainForSignsInfo.generatedAnnouncement.signs_used && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Signs Used ({selectedTrainForSignsInfo.generatedAnnouncement.signs_used.length})
+                                    </label>
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 max-h-32 overflow-y-auto">
+                                        <p className="text-sm text-green-800">
+                                            {selectedTrainForSignsInfo.generatedAnnouncement.signs_used.join(', ')}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedTrainForSignsInfo.generatedAnnouncement.signs_skipped && selectedTrainForSignsInfo.generatedAnnouncement.signs_skipped.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Signs Skipped ({selectedTrainForSignsInfo.generatedAnnouncement.signs_skipped.length})
+                                    </label>
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 max-h-32 overflow-y-auto">
+                                        <p className="text-sm text-yellow-800">
+                                            {selectedTrainForSignsInfo.generatedAnnouncement.signs_skipped.join(', ')}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {(!selectedTrainForSignsInfo.generatedAnnouncement.signs_used && !selectedTrainForSignsInfo.generatedAnnouncement.signs_skipped) && (
+                                <div className="text-center py-4">
+                                    <p className="text-gray-500 text-sm">No signs information available</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={handleCloseSignsInfoModal}
+                                className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}

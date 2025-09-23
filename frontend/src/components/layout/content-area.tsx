@@ -7,6 +7,7 @@ import SpeechToISL from '@/components/speech-to-isl/speech-to-isl'
 import { ISLDictionary } from '@/components/isl-dictionary/isl-dictionary'
 import { GeneralAnnouncementISL } from '@/components/general-announcement-isl/general-announcement-isl'
 import { AnnouncementTemplates } from '@/components/announcement-templates/announcement-templates'
+import { Dashboard } from '@/components/dashboard/dashboard'
 
 interface ContentAreaProps {
     activeMenu: string
@@ -16,19 +17,7 @@ export const ContentArea: React.FC<ContentAreaProps> = ({ activeMenu }) => {
     const renderContent = () => {
         switch (activeMenu) {
             case 'dashboard':
-                return (
-                    <div className="p-6">
-                        <div className="max-w-7xl mx-auto">
-                            <div className="space-y-6">
-                                <div className="mb-8">
-                                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-                                    <p className="text-gray-600">Welcome to your SignVerse dashboard</p>
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>
-                )
+                return <Dashboard />
 
             case 'route-management':
                 return <RouteManagement />
