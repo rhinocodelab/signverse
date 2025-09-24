@@ -30,6 +30,12 @@ export const Dashboard: React.FC = () => {
     const [isSignsInfoModalOpen, setIsSignsInfoModalOpen] = useState(false)
     const [selectedTrainForSignsInfo, setSelectedTrainForSignsInfo] = useState<TrainInfo | null>(null)
     const [playbackSpeeds, setPlaybackSpeeds] = useState<Record<number, number>>({})
+    
+    // Publish announcement modal state
+    const [showPublishModal, setShowPublishModal] = useState(false)
+    const [publishingAnnouncement, setPublishingAnnouncement] = useState<TrainInfo | null>(null)
+    const [publishStatus, setPublishStatus] = useState<'idle' | 'saving' | 'generating' | 'success' | 'error'>('idle')
+    const [publishMessage, setPublishMessage] = useState('')
 
     // Fetch announcement categories and supported models on component mount
     useEffect(() => {
@@ -273,6 +279,104 @@ export const Dashboard: React.FC = () => {
                     }))
             )
         }
+    }
+
+    const handlePublishAnnouncement = async (train: TrainInfo) => {
+        if (!train.generatedAnnouncement?.success) {
+            console.error('No successful announcement to publish')
+            return
+        }
+
+        // Open modal and start publishing process
+        setPublishingAnnouncement(train)
+        setShowPublishModal(true)
+        setPublishStatus('idle')
+        setPublishMessage('')
+
+        try {
+            // First, save the video to permanent location if it's a temporary video
+            let videoPath = train.generatedAnnouncement.preview_url || ''
+            
+            if (videoPath.startsWith('/isl-video-generation/preview/')) {
+                setPublishStatus('saving')
+                setPublishMessage('Saving video to permanent location...')
+                
+                // Extract temp video ID from preview URL
+                const tempVideoId = videoPath.split('/').pop()
+                
+                // Save the temporary video to permanent location
+                const saveResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/isl-video-generation/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        temp_video_id: tempVideoId,
+                        user_id: 1
+                    })
+                })
+                
+                if (saveResponse.ok) {
+                    const saveResult = await saveResponse.json()
+                    videoPath = saveResult.final_video_url
+                    console.log('Video saved to permanent location:', videoPath)
+                } else {
+                    console.error('Failed to save video to permanent location')
+                    setPublishStatus('error')
+                    setPublishMessage('Failed to save video to permanent location. Please try again.')
+                    return
+                }
+            }
+
+            // Convert API endpoint URL to absolute file path
+            let absoluteVideoPath = videoPath
+            if (videoPath.startsWith('/api/v1/isl-videos/serve/')) {
+                // Extract filename from API endpoint URL
+                const filename = videoPath.split('/').pop()
+                absoluteVideoPath = `/home/myuser/Projects/signverse/backend/uploads/isl-videos/user_1/${filename}`
+            }
+
+            setPublishStatus('generating')
+            setPublishMessage('Generating HTML page...')
+
+            console.log('Publishing announcement for train:', train.train_number)
+            console.log('Video path:', absoluteVideoPath)
+
+            // Call the HTML generation endpoint
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/html-generation/generate-simple-html`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    video_path: absoluteVideoPath
+                })
+            })
+
+            if (response.ok) {
+                const result = await response.json()
+                console.log('HTML page generated successfully:', result)
+                setPublishStatus('success')
+                setPublishMessage('Announcement published successfully!')
+            } else {
+                const error = await response.json()
+                console.error('Failed to publish announcement:', error)
+                setPublishStatus('error')
+                setPublishMessage(`Failed to publish announcement: ${error.detail || 'Unknown error'}`)
+            }
+            
+        } catch (error) {
+            console.error('Error publishing announcement:', error)
+            setPublishStatus('error')
+            setPublishMessage(`Error publishing announcement: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+    }
+
+    const handleClosePublishModal = () => {
+        setShowPublishModal(false)
+        setPublishingAnnouncement(null)
+        setPublishStatus('idle')
+        setPublishMessage('')
     }
 
     const validateTrainNumber = (value: string) => {
@@ -566,6 +670,20 @@ export const Dashboard: React.FC = () => {
                                                                                     })}
                                                                                 </div>
                                                                             </div>
+                                                                            
+                                                                            {/* Publish Announcement Button */}
+                                                                            <div className="mt-4">
+                                                                                <button
+                                                                                    onClick={() => handlePublishAnnouncement(train)}
+                                                                                    className="w-full px-4 py-2 bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                                                                                    disabled={!train.generatedAnnouncement?.success}
+                                                                                >
+                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                                                    </svg>
+                                                                                    Publish Announcement
+                                                                                </button>
+                                                                            </div>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -735,6 +853,112 @@ export const Dashboard: React.FC = () => {
                             >
                                 Close
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Publish Announcement Modal */}
+            {showPublishModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    {/* Transparent background with shadow */}
+                    <div className="absolute inset-0 bg-transparent"></div>
+                    
+                    {/* Modal content with shadow */}
+                    <div className="relative bg-white rounded-lg shadow-2xl border border-gray-200 p-6 max-w-md w-full mx-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold text-gray-900">
+                                Publish Announcement
+                            </h3>
+                            <button
+                                onClick={handleClosePublishModal}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {publishingAnnouncement && (
+                            <div className="mb-4">
+                                <p className="text-sm text-gray-600 mb-2">
+                                    <strong>Train:</strong> {publishingAnnouncement.train_number} - {publishingAnnouncement.train_name}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    <strong>Route:</strong> {publishingAnnouncement.from_station_name} → {publishingAnnouncement.to_station_name}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="space-y-4">
+                            {/* Status indicator */}
+                            <div className="flex items-center space-x-3">
+                                {publishStatus === 'idle' && (
+                                    <div className="w-4 h-4 bg-gray-300 rounded-full"></div>
+                                )}
+                                {publishStatus === 'saving' && (
+                                    <div className="w-4 h-4 bg-blue-500 rounded-full animate-pulse"></div>
+                                )}
+                                {publishStatus === 'generating' && (
+                                    <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
+                                )}
+                                {publishStatus === 'success' && (
+                                    <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                                )}
+                                {publishStatus === 'error' && (
+                                    <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                                )}
+                                
+                                <span className="text-sm font-medium text-gray-700">
+                                    {publishStatus === 'idle' && 'Ready to publish'}
+                                    {publishStatus === 'saving' && 'Saving video...'}
+                                    {publishStatus === 'generating' && 'Generating HTML...'}
+                                    {publishStatus === 'success' && 'Published successfully!'}
+                                    {publishStatus === 'error' && 'Publishing failed'}
+                                </span>
+                            </div>
+
+                            {/* Progress message */}
+                            {publishMessage && (
+                                <div className={`p-3 rounded-lg text-sm ${
+                                    publishStatus === 'success' 
+                                        ? 'bg-green-50 text-green-800 border border-green-200'
+                                        : publishStatus === 'error'
+                                        ? 'bg-red-50 text-red-800 border border-red-200'
+                                        : 'bg-blue-50 text-blue-800 border border-blue-200'
+                                }`}>
+                                    <pre className="whitespace-pre-wrap">{publishMessage}</pre>
+                                </div>
+                            )}
+
+                            {/* Action buttons */}
+                            <div className="flex justify-end space-x-3">
+                                {publishStatus === 'success' && (
+                                    <button
+                                        onClick={handleClosePublishModal}
+                                        className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
+                                    >
+                                        Done
+                                    </button>
+                                )}
+                                {publishStatus === 'error' && (
+                                    <button
+                                        onClick={handleClosePublishModal}
+                                        className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                )}
+                                {(publishStatus === 'idle' || publishStatus === 'saving' || publishStatus === 'generating') && (
+                                    <button
+                                        onClick={handleClosePublishModal}
+                                        className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, credentials, train_routes, train_route_translations, translation, isl_videos, isl_video_generation, language_detection, audio_translation, audio_upload, speech_to_isl, general_announcements, announcement_templates, train_announcements, live_announcements
+from app.api.v1.endpoints import health, auth, credentials, train_routes, train_route_translations, translation, isl_videos, isl_video_generation, language_detection, audio_translation, audio_upload, speech_to_isl, general_announcements, announcement_templates, train_announcements, live_announcements, html_generation
 
 api_router = APIRouter()
 
@@ -33,3 +33,5 @@ api_router.include_router(
     train_announcements.router, prefix="/train-announcements", tags=["train-announcements"])
 api_router.include_router(
     live_announcements.router, prefix="/live-announcements", tags=["live-announcements"])
+api_router.include_router(
+    html_generation.router, prefix="/html-generation", tags=["html-generation"])
