@@ -320,7 +320,7 @@ async def generate_isl_video(request: VideoGenerationRequest):
             video_files, str(temp_output_path))
 
         # Create preview URL
-        preview_url = f"/api/v1/isl-video-generation/preview/{temp_video_id}"
+        preview_url = f"/isl-video-generation/preview/{temp_video_id}"
 
         logger.info(f"ISL video generated successfully: {temp_video_id}")
 

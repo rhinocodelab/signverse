@@ -52,6 +52,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<GeneralAnnouncement | null>(null)
     const [showVideoModal, setShowVideoModal] = useState(false)
     const [selectedVideo, setSelectedVideo] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     // Fetch announcements
     const fetchAnnouncements = useCallback(async () => {
@@ -80,15 +81,20 @@ export const GeneralAnnouncementISL: React.FC = () => {
     }, [currentPage, limit, searchTerm, selectedCategory, selectedModel])
 
     // Fetch statistics
-    const fetchStatistics = useCallback(async () => {
+    const fetchStatistics = useCallback(async (forceRefresh = false) => {
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/general-announcements/statistics/overview`)
+            const url = forceRefresh 
+                ? `${process.env.NEXT_PUBLIC_API_URL}/general-announcements/statistics/overview?t=${Date.now()}`
+                : `${process.env.NEXT_PUBLIC_API_URL}/general-announcements/statistics/overview`
+            const response = await fetch(url)
             if (response.ok) {
                 const data = await response.json()
                 setStatistics(data)
+            } else {
+                console.error('Failed to fetch statistics:', response.status, response.statusText)
             }
         } catch (error) {
-            console.error('Failed to fetch statistics:', error)
+            console.error('Error fetching statistics:', error)
         }
     }, [])
 
@@ -108,23 +114,30 @@ export const GeneralAnnouncementISL: React.FC = () => {
 
     useEffect(() => {
         fetchAnnouncements()
-        fetchStatistics()
+        fetchStatistics(true)
         fetchCategories()
     }, [fetchAnnouncements, fetchStatistics, fetchCategories])
 
     const handleDelete = async (announcement: GeneralAnnouncement) => {
+        setIsDeleting(true)
         try {
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/general-announcements/${announcement.id}`, {
                 method: 'DELETE'
             })
+            
             if (response.ok) {
-                fetchAnnouncements()
-                fetchStatistics()
+                // Refresh the data
+                await fetchAnnouncements()
+                await fetchStatistics(true)
                 setShowDeleteModal(false)
                 setSelectedAnnouncement(null)
+            } else {
+                console.error('Failed to delete announcement:', response.status, response.statusText)
             }
         } catch (error) {
             console.error('Failed to delete announcement:', error)
+        } finally {
+            setIsDeleting(false)
         }
     }
 
@@ -148,7 +161,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
     const handleBackToList = () => {
         setCurrentView('list')
         fetchAnnouncements()
-        fetchStatistics()
+        fetchStatistics(true)
     }
 
     // Render different views
@@ -434,7 +447,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
             {/* Video Modal */}
             {showVideoModal && selectedVideo && (
                 <div className="fixed inset-0 flex items-center justify-center z-50 bg-transparent">
-                    <div className="bg-white p-6 max-w-4xl w-full mx-4 rounded-none shadow-2xl">
+                    <div className="bg-white p-6 max-w-4xl w-full mx-4 rounded-lg shadow-2xl border border-gray-200">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold">ISL Video</h3>
                             <Button
@@ -450,7 +463,7 @@ export const GeneralAnnouncementISL: React.FC = () => {
                         <video
                             src={selectedVideo}
                             controls
-                            className="w-full h-auto rounded-none"
+                            className="w-full h-auto rounded-lg"
                             autoPlay
                         >
                             Your browser does not support the video tag.
@@ -461,8 +474,13 @@ export const GeneralAnnouncementISL: React.FC = () => {
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && selectedAnnouncement && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-                    <div className="bg-white p-6 max-w-md w-full mx-4 rounded-none shadow-2xl">
+                <div className="fixed inset-0 flex items-center justify-center z-[9999] bg-transparent" onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                        setShowDeleteModal(false)
+                        setSelectedAnnouncement(null)
+                    }
+                }}>
+                    <div className="bg-white p-6 max-w-md w-full mx-4 shadow-2xl rounded-lg border border-gray-200">
                         <div className="text-center">
                             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                                 <Trash2 className="h-6 w-6 text-red-600" />
@@ -483,10 +501,18 @@ export const GeneralAnnouncementISL: React.FC = () => {
                                     Cancel
                                 </Button>
                                 <Button
-                                    onClick={() => handleDelete(selectedAnnouncement)}
+                                    onClick={() => handleDelete(selectedAnnouncement!)}
                                     className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                                    disabled={isDeleting}
                                 >
-                                    Delete
+                                    {isDeleting ? (
+                                        <>
+                                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        'Delete'
+                                    )}
                                 </Button>
                             </div>
                         </div>

@@ -50,7 +50,6 @@ class GeneralAnnouncementSearch(BaseModel):
     search_text: Optional[str] = None
     category: Optional[str] = None
     model: Optional[str] = None
-    is_active: Optional[bool] = None
     page: int = Field(1, ge=1)
     limit: int = Field(10, ge=1, le=100)
 

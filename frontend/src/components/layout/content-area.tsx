@@ -8,6 +8,7 @@ import { ISLDictionary } from '@/components/isl-dictionary/isl-dictionary'
 import { GeneralAnnouncementISL } from '@/components/general-announcement-isl/general-announcement-isl'
 import { AnnouncementTemplates } from '@/components/announcement-templates/announcement-templates'
 import { Dashboard } from '@/components/dashboard/dashboard'
+import { LiveAnnouncements } from '@/components/live-announcements/live-announcements'
 
 interface ContentAreaProps {
     activeMenu: string
@@ -19,6 +20,9 @@ export const ContentArea: React.FC<ContentAreaProps> = ({ activeMenu }) => {
             case 'dashboard':
             case 'dashboard-main':
                 return <Dashboard />
+
+            case 'live-announcements':
+                return <LiveAnnouncements />
 
             case 'route-management':
                 return <RouteManagement />

@@ -27,7 +27,8 @@ class TrainAnnouncementService:
 
     async def generate_train_announcement(
         self, 
-        request: TrainAnnouncementRequest
+        request: TrainAnnouncementRequest,
+        save_to_general_announcements: bool = True
     ) -> TrainAnnouncementResponse:
         """
         Generate a complete train announcement with ISL video in multiple languages
@@ -97,37 +98,98 @@ class TrainAnnouncementService:
             # Step 4: Create announcement name
             announcement_name = f"{request.train_number} {request.train_name} - {request.announcement_category}"
 
-            # Step 5: Create general announcement record
-            announcement_data = GeneralAnnouncementCreate(
-                announcement_name=announcement_name,
-                category=request.announcement_category,
-                model=request.model,
-                announcement_text_english=english_text,
-                announcement_text_hindi=hindi_text,
-                announcement_text_gujarati=gujarati_text,
-                announcement_text_marathi=marathi_text
-            )
-
-            # Create the announcement record
-            announcement = await self.general_announcement_service.create_announcement(announcement_data)
-            if not announcement:
-                return TrainAnnouncementResponse(
-                    success=False,
-                    error="Failed to create announcement record"
+            # Step 5: Create general announcement record (only if requested)
+            announcement = None
+            if save_to_general_announcements:
+                announcement_data = GeneralAnnouncementCreate(
+                    announcement_name=announcement_name,
+                    category=request.announcement_category,
+                    model=request.model,
+                    announcement_text_english=english_text,
+                    announcement_text_hindi=hindi_text,
+                    announcement_text_gujarati=gujarati_text,
+                    announcement_text_marathi=marathi_text
                 )
 
-            logger.info(f"Created announcement record with ID: {announcement.id}")
+                # Create the announcement record
+                announcement = await self.general_announcement_service.create_announcement(announcement_data)
+                if not announcement:
+                    return TrainAnnouncementResponse(
+                        success=False,
+                        error="Failed to create announcement record"
+                    )
 
-            return TrainAnnouncementResponse(
-                success=True,
-                announcement_id=announcement.id,
-                announcement_name=announcement_name,
-                generated_text=english_text,
-                generated_text_hindi=hindi_text,
-                generated_text_marathi=marathi_text,
-                generated_text_gujarati=gujarati_text,
-                error=None
-            )
+                logger.info(f"Created announcement record with ID: {announcement.id}")
+            else:
+                logger.info("Skipping general announcement creation for live announcement")
+
+            # Step 6: Generate ISL video
+            try:
+                from app.api.v1.endpoints.isl_video_generation import generate_isl_video, VideoGenerationRequest
+                
+                video_request = VideoGenerationRequest(
+                    text=english_text,
+                    model=request.model,
+                    user_id=request.user_id
+                )
+                
+                announcement_id = announcement.id if announcement else None
+                logger.info(f"Generating ISL video for announcement {announcement_id}")
+                video_response = await generate_isl_video(video_request)
+                
+                if video_response.success:
+                    logger.info(f"ISL video generated successfully: {video_response.temp_video_id}")
+                    
+                    # Update the announcement with the video path if we have an announcement record
+                    if announcement and video_response.preview_url:
+                        try:
+                            await self.general_announcement_service.update_video_path(
+                                announcement.id, 
+                                video_response.preview_url
+                            )
+                            logger.info(f"Updated announcement {announcement.id} with video path: {video_response.preview_url}")
+                        except Exception as update_error:
+                            logger.error(f"Failed to update video path for announcement {announcement.id}: {str(update_error)}")
+                    
+                    return TrainAnnouncementResponse(
+                        success=True,
+                        announcement_id=announcement_id,
+                        announcement_name=announcement_name,
+                        generated_text=english_text,
+                        generated_text_hindi=hindi_text,
+                        generated_text_marathi=marathi_text,
+                        generated_text_gujarati=gujarati_text,
+                        temp_video_id=video_response.temp_video_id,
+                        preview_url=video_response.preview_url,
+                        signs_used=video_response.signs_used,
+                        signs_skipped=video_response.signs_skipped,
+                        error=None
+                    )
+                else:
+                    logger.error(f"ISL video generation failed: {video_response.error}")
+                    return TrainAnnouncementResponse(
+                        success=True,
+                        announcement_id=announcement_id,
+                        announcement_name=announcement_name,
+                        generated_text=english_text,
+                        generated_text_hindi=hindi_text,
+                        generated_text_marathi=marathi_text,
+                        generated_text_gujarati=gujarati_text,
+                        error=f"Announcement created but video generation failed: {video_response.error}"
+                    )
+                    
+            except Exception as video_error:
+                logger.error(f"Exception during ISL video generation: {str(video_error)}")
+                return TrainAnnouncementResponse(
+                    success=True,
+                    announcement_id=announcement.id,
+                    announcement_name=announcement_name,
+                    generated_text=english_text,
+                    generated_text_hindi=hindi_text,
+                    generated_text_marathi=marathi_text,
+                    generated_text_gujarati=gujarati_text,
+                    error=f"Announcement created but video generation failed: {str(video_error)}"
+                )
 
         except Exception as e:
             logger.error(f"Error generating train announcement: {str(e)}")

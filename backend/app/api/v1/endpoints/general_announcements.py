@@ -23,7 +23,6 @@ router = APIRouter()
 async def get_announcements(
     category: Optional[str] = Query(None, description="Filter by category"),
     model: Optional[str] = Query(None, description="Filter by model (male/female)"),
-    is_active: Optional[bool] = Query(None, description="Filter by active status"),
     search: Optional[str] = Query(None, description="Search term"),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
@@ -38,7 +37,6 @@ async def get_announcements(
             search_text=search,
             category=category,
             model=model,
-            is_active=is_active,
             page=page,
             limit=limit
         )
@@ -128,10 +126,10 @@ async def delete_announcement(
     announcement_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    """Soft delete an announcement (mark as inactive)"""
+    """Permanently delete an announcement"""
     try:
         announcement_service = get_general_announcement_service(db)
-        success = await announcement_service.delete_announcement(announcement_id)
+        success = await announcement_service.hard_delete_announcement(announcement_id)
         
         if not success:
             raise HTTPException(status_code=404, detail="Announcement not found")
@@ -186,11 +184,16 @@ async def get_announcement_statistics(
 @router.put("/{announcement_id}/video-path")
 async def update_video_path(
     announcement_id: int,
-    video_path: str,
+    request: dict,
     db: AsyncSession = Depends(get_db)
 ):
     """Update the ISL video path for an announcement"""
     try:
+        # Extract video path from request body
+        video_path = request.get('isl_video_path')
+        if not video_path:
+            raise HTTPException(status_code=400, detail="isl_video_path is required")
+        
         announcement_service = get_general_announcement_service(db)
         announcement = await announcement_service.update_video_path(announcement_id, video_path)
         
@@ -245,8 +248,14 @@ async def stream_announcement_video(
         # Handle different path formats dynamically
         video_path_str = announcement.isl_video_path
         
+        # If it's an API endpoint URL, extract the filename and construct the file path
+        if video_path_str.startswith('/api/v1/isl-videos/serve/'):
+            # Extract filename from API endpoint URL
+            # Format: /api/v1/isl-videos/serve/1/filename.mp4
+            filename = video_path_str.split('/')[-1]
+            video_path = Path(f"uploads/isl-videos/user_1/{filename}")
         # If it's an absolute path, use it directly
-        if os.path.isabs(video_path_str):
+        elif os.path.isabs(video_path_str):
             video_path = Path(video_path_str)
         # If it starts with 'backend/', remove it since we're already in the backend directory
         elif video_path_str.startswith('backend/'):

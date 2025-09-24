@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import socketio
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.utils.logger import setup_logging
+from app.core.socketio import sio
 
 
 @asynccontextmanager
@@ -36,6 +38,9 @@ if settings.BACKEND_CORS_ORIGINS:
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Create ASGI app with Socket.IO
+asgi_app = socketio.ASGIApp(sio, app)
 
 
 @app.get("/")

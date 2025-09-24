@@ -1,6 +1,6 @@
 import uvicorn
 import os
-from app.main import app
+from app.main import asgi_app
 from app.core.config import settings
 
 if __name__ == "__main__":
@@ -9,7 +9,7 @@ if __name__ == "__main__":
     cert_dir = os.path.join(project_root, "scripts", "certs")
 
     uvicorn.run(
-        "app.main:app",
+        "app.main:asgi_app",
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,

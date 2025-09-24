@@ -177,7 +177,7 @@ export const Dashboard: React.FC = () => {
             // If the video was playing, restart it at the current position
             if (wasPlaying) {
                 videoElement.currentTime = currentTime
-                videoElement.play().catch(error => {
+                videoElement.play().catch(function(error) {
                     console.log('Video play failed (user interaction may be required):', error)
                 })
             }
@@ -187,14 +187,15 @@ export const Dashboard: React.FC = () => {
             const allVideos = document.querySelectorAll('video')
             for (const video of allVideos) {
                 if (video.getAttribute('data-train-id') === trainId.toString()) {
-                    const currentTime = video.currentTime
-                    const wasPlaying = !video.paused
+                    const videoElement = video as HTMLVideoElement
+                    const currentTime = videoElement.currentTime
+                    const wasPlaying = !videoElement.paused
                     
-                    (video as HTMLVideoElement).playbackRate = speed
+                    videoElement.playbackRate = speed
                     
                     if (wasPlaying) {
-                        video.currentTime = currentTime
-                        video.play().catch(error => {
+                        videoElement.currentTime = currentTime
+                        videoElement.play().catch(function(error) {
                             console.log('Video play failed (user interaction may be required):', error)
                         })
                     }
@@ -537,7 +538,7 @@ export const Dashboard: React.FC = () => {
                                                                                     data-train-id={train.id}
                                                                                     src={train.generatedAnnouncement.temp_video_id ? 
                                                                                         islVideoGenerationService.getPreviewVideoUrl(train.generatedAnnouncement.temp_video_id) : 
-                                                                                        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${train.generatedAnnouncement.preview_url}`
+                                                                                        `${process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5001'}${train.generatedAnnouncement.preview_url}`
                                                                                     }
                                                                                 >
                                                                                     Your browser does not support the video tag.

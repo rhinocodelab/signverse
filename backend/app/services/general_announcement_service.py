@@ -1,3 +1,6 @@
+import os
+import logging
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import and_, or_, func, select
 from typing import List, Optional
@@ -13,6 +16,7 @@ from app.schemas.general_announcement import (
 class GeneralAnnouncementService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self.logger = logging.getLogger(__name__)
 
     async def create_announcement(self, announcement_data: GeneralAnnouncementCreate) -> GeneralAnnouncementModel:
         """Create a new general announcement record"""
@@ -51,10 +55,6 @@ class GeneralAnnouncementService:
         if search_params.model:
             query = query.where(GeneralAnnouncementModel.model == search_params.model)
 
-        # Filter by active status
-        if search_params.is_active is not None:
-            query = query.where(GeneralAnnouncementModel.is_active == search_params.is_active)
-
         # Search by text
         if search_params.search_text:
             search_term = f"%{search_params.search_text}%"
@@ -90,10 +90,6 @@ class GeneralAnnouncementService:
         if search_params.model:
             query = query.where(GeneralAnnouncementModel.model == search_params.model)
 
-        # Filter by active status
-        if search_params.is_active is not None:
-            query = query.where(GeneralAnnouncementModel.is_active == search_params.is_active)
-
         # Search by text
         if search_params.search_text:
             search_term = f"%{search_params.search_text}%"
@@ -124,24 +120,54 @@ class GeneralAnnouncementService:
         await self.db.refresh(db_announcement)
         return db_announcement
 
-    async def delete_announcement(self, announcement_id: int) -> bool:
-        """Soft delete announcement (mark as inactive)"""
-        db_announcement = await self.get_announcement(announcement_id)
-        if not db_announcement:
+    def _delete_video_file(self, video_path: str) -> bool:
+        """Delete the video file associated with an announcement"""
+        if not video_path:
+            return True  # No video file to delete
+        
+        try:
+            # Handle different path formats
+            if video_path.startswith('/api/v1/isl-videos/serve/'):
+                # Extract filename from API endpoint URL
+                filename = video_path.split('/')[-1]
+                file_path = Path(f"uploads/isl-videos/user_1/{filename}")
+            elif video_path.startswith('backend/'):
+                # Remove 'backend/' prefix
+                file_path = Path(video_path[8:])
+            else:
+                # Use the path as is
+                file_path = Path(video_path)
+            
+            # Check if file exists and delete it
+            if file_path.exists():
+                file_path.unlink()
+                self.logger.info(f"Deleted video file: {file_path}")
+                return True
+            else:
+                self.logger.warning(f"Video file not found: {file_path}")
+                return True  # File doesn't exist, consider it deleted
+                
+        except Exception as e:
+            self.logger.error(f"Failed to delete video file {video_path}: {str(e)}")
             return False
-
-        db_announcement.is_active = False
-        await self.db.commit()
-        return True
 
     async def hard_delete_announcement(self, announcement_id: int) -> bool:
-        """Permanently delete announcement"""
+        """Permanently delete announcement and its associated video file"""
         db_announcement = await self.get_announcement(announcement_id)
         if not db_announcement:
             return False
 
+        # Delete the associated video file if it exists
+        if db_announcement.isl_video_path:
+            video_deleted = self._delete_video_file(db_announcement.isl_video_path)
+            if not video_deleted:
+                self.logger.warning(f"Failed to delete video file for announcement {announcement_id}, but continuing with database deletion")
+
+        # Delete the database record
         await self.db.delete(db_announcement)
         await self.db.commit()
+        
+        self.logger.info(f"Successfully deleted announcement {announcement_id} and its associated video file")
         return True
 
     async def get_announcement_statistics(self) -> GeneralAnnouncementStatistics:
@@ -149,16 +175,6 @@ class GeneralAnnouncementService:
         # Total announcements
         total_result = await self.db.execute(select(func.count(GeneralAnnouncementModel.id)))
         total_announcements = total_result.scalar()
-
-        # Active announcements
-        active_result = await self.db.execute(
-            select(func.count(GeneralAnnouncementModel.id))
-            .where(GeneralAnnouncementModel.is_active == True)
-        )
-        active_announcements = active_result.scalar()
-
-        # Inactive announcements
-        inactive_announcements = total_announcements - active_announcements
 
         # Announcements by category
         category_result = await self.db.execute(
@@ -176,8 +192,8 @@ class GeneralAnnouncementService:
 
         return GeneralAnnouncementStatistics(
             total_announcements=total_announcements,
-            active_announcements=active_announcements,
-            inactive_announcements=inactive_announcements,
+            active_announcements=total_announcements,  # All announcements are considered active
+            inactive_announcements=0,  # No inactive announcements
             announcements_by_category=announcements_by_category,
             announcements_by_model=announcements_by_model
         )

@@ -3,7 +3,25 @@ import { TrainRoute } from '@/types/train-route'
 import { TrainAnnouncementRequest, TrainAnnouncementResponse } from '@/types/train-announcement'
 import toast from 'react-hot-toast'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1'
+interface LiveAnnouncement {
+    announcement_id: string
+    train_number: string
+    train_name: string
+    from_station: string
+    to_station: string
+    platform_number: number
+    announcement_category: string
+    ai_avatar_model: string
+    status: 'received' | 'processing' | 'generating_video' | 'completed' | 'error'
+    message: string
+    progress_percentage?: number
+    video_url?: string
+    error_message?: string
+    received_at: string
+    updated_at: string
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5001/api/v1'
 
 class ApiService {
     private baseURL: string
@@ -155,6 +173,20 @@ class ApiService {
 
     async deleteAllTempVideos(): Promise<void> {
         await this.request<void>('/isl-video-generation/cleanup-temp-videos', {
+            method: 'DELETE'
+        })
+    }
+
+    async getLiveAnnouncements(): Promise<LiveAnnouncement[]> {
+        const result = await this.request<LiveAnnouncement[]>('/live-announcements/list')
+        if (!result) {
+            throw new Error('Failed to fetch live announcements')
+        }
+        return result
+    }
+
+    async clearLiveAnnouncements(): Promise<void> {
+        await this.request<void>('/live-announcements/clear', {
             method: 'DELETE'
         })
     }
