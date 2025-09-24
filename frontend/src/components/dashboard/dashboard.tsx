@@ -239,17 +239,15 @@ export const Dashboard: React.FC = () => {
 
             const response = await apiService.generateTrainAnnouncement(request)
             
-            // Update train with generated announcement
+            // Update train with generated announcement and remove other results
             setSearchResults(prevResults => 
-                prevResults.map(t => 
-                    t.train_number === selectedTrainForGeneration.train_number 
-                        ? { 
-                            ...t, 
-                            generatedAnnouncement: response,
-                            isGenerating: false 
-                        }
-                        : t
-                )
+                prevResults
+                    .filter(t => t.train_number === selectedTrainForGeneration.train_number)
+                    .map(t => ({ 
+                        ...t, 
+                        generatedAnnouncement: response,
+                        isGenerating: false 
+                    }))
             )
 
             // Initialize playback speed for this train
@@ -261,20 +259,18 @@ export const Dashboard: React.FC = () => {
         } catch (error) {
             console.error('Error generating announcement:', error)
             
-            // Set error state
+            // Set error state and remove other results
             setSearchResults(prevResults => 
-                prevResults.map(t => 
-                    t.train_number === selectedTrainForGeneration.train_number 
-                        ? { 
-                            ...t, 
-                            generatedAnnouncement: {
-                                success: false,
-                                error: error instanceof Error ? error.message : 'Unknown error'
-                            },
-                            isGenerating: false 
-                        }
-                        : t
-                )
+                prevResults
+                    .filter(t => t.train_number === selectedTrainForGeneration.train_number)
+                    .map(t => ({ 
+                        ...t, 
+                        generatedAnnouncement: {
+                            success: false,
+                            error: error instanceof Error ? error.message : 'Unknown error'
+                        },
+                        isGenerating: false 
+                    }))
             )
         }
     }
